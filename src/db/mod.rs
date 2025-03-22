@@ -1,13 +1,16 @@
+use std::future::Future;
+use std::time::Duration;
+
 use serenity::all::{ChannelId, MessageId, UserId};
-use sqlx::sqlite::{SqlitePool, SqlitePoolOptions, SqliteConnection, Sqlite};
-use sqlx::Transaction;
+use sqlx::{sqlite::SqliteConnection, Sqlite};
+use sqlx::{TransactionManager, Connection};
+use deadpool::{Runtime, managed::{self, Manager, Pool, Timeouts}};
 
 pub use competition::{Competition, BingoSquare};
-pub use user::User;
+pub use user::{User, UserRaw};
 pub use challenge::{Challenge, ChallengeType};
 pub use solve::{ApprovalStatus, Solve};
 use competition::CompetitionRaw;
-use user::UserRaw;
 use challenge::ChallengeRaw;
 use solve::SolveRaw;
 
@@ -19,7 +22,28 @@ mod challenge;
 mod solve;
 
 pub struct DbContext {
-    pool: SqlitePool,
+    pool: Pool<ConnectionManager>,
+}
+
+struct ConnectionManager {
+    url: String,
+}
+
+impl Manager for ConnectionManager {
+    type Type = SqliteConnection;
+    type Error = sqlx::Error;
+
+    fn create(&self) -> impl Future<Output = Result<Self::Type, Self::Error>> + Send {
+        SqliteConnection::connect(&self.url)
+    }
+
+    async fn recycle(
+        &self,
+        connection: &mut Self::Type,
+        _metrics: &deadpool::managed::Metrics,
+    ) -> deadpool::managed::RecycleResult<Self::Error> {
+        Ok(connection.ping().await?)
+    }
 }
 
 struct OutputId { id: i64 }
@@ -28,40 +52,49 @@ impl DbContext {
     /// Connects to the database at `url`
     pub async fn connect(url: &str) -> Result<Self, anyhow::Error> {
         // TODO: idk what is a good value for max connections
-        let pool = SqlitePoolOptions::new()
-            .max_connections(5)
-            .connect(url)
-            .await?;
+        let pool = Pool::builder(ConnectionManager { url: String::from(url) })
+            .max_size(5)
+            .timeouts(Timeouts {
+                wait: Some(Duration::from_secs(60)),
+                create: Some(Duration::from_secs(10)),
+                recycle: Some(Duration::from_secs(10)),
+            })
+            .runtime(Runtime::Tokio1)
+            .build()?;
 
         Ok(DbContext { pool })
     }
 
-    pub async fn try_conn<'pool>(&'pool self) -> Result<DbConn<'pool>, anyhow::Error> {
+    pub async fn try_conn(&self) -> Result<DbConn, anyhow::Error> {
+        let mut connection = self.pool.get().await?;
+        connection.begin().await?;
         Ok(DbConn {
-            transaction: self.pool.begin().await?,
+            connection,
         })
     }
 
-    pub async fn conn<'pool>(&'pool self) -> DbConn<'pool> {
+    pub async fn conn(&self) -> DbConn {
         self.try_conn().await.expect("could not acquire database connection")
     }
 }
 
-pub struct DbConn<'a> {
-    transaction: Transaction<'a, Sqlite>,
+pub struct DbConn {
+    connection: managed::Object<ConnectionManager>,
 }
 
-impl DbConn<'_> {
-    fn connection<'a>(&'a mut self) -> &'a mut SqliteConnection {
-        &mut self.transaction
+impl DbConn {
+    fn connection(& mut self) -> & mut SqliteConnection {
+        &mut self.connection
     }
 
-    pub async fn commit(self) -> Result<(), anyhow::Error> {
-        Ok(self.transaction.commit().await?)
+    pub async fn commit(mut self) -> Result<(), anyhow::Error> {
+        <Sqlite as sqlx::Database>::TransactionManager::commit(self.connection()).await?;
+        Ok(())
     }
 
-    pub async fn rollback(self) -> Result<(), anyhow::Error> {
-        Ok(self.transaction.rollback().await?)
+    pub async fn rollback(mut self) -> Result<(), anyhow::Error> {
+        <Sqlite as sqlx::Database>::TransactionManager::rollback(self.connection()).await?;
+        Ok(())
     }
 
     pub async fn create_competition(&mut self, competition: Competition) -> Result<(), anyhow::Error> {
@@ -308,6 +341,12 @@ impl DbConn<'_> {
             .fetch_all(self.connection()).await?;
 
         Ok(result)
+    }
+}
+
+impl Drop for DbConn {
+    fn drop(&mut self) {
+        <Sqlite as sqlx::Database>::TransactionManager::start_rollback(self.connection());
     }
 }
 

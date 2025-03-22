@@ -2,7 +2,7 @@ use crate::{commands::{add_role_to_user, remove_role_from_user}, config::config,
 
 use serenity::all::{Context, CreateMessage, UserId};
 
-pub async fn get_point_cutoffs(db: &mut DbConn<'_>) -> anyhow::Result<Vec<i64>> {
+pub async fn get_point_cutoffs(db: &mut DbConn) -> anyhow::Result<Vec<i64>> {
     let mut max_score = db.get_users_by_points(1)
         .await?
         .first()
@@ -26,7 +26,7 @@ struct RankManager {
 }
 
 impl RankManager {
-    async fn new(db: &mut DbConn<'_>) -> anyhow::Result<Self> {
+    async fn new(db: &mut DbConn) -> anyhow::Result<Self> {
         Ok(RankManager {
             point_cutoffs: get_point_cutoffs(db).await?,
         })
@@ -78,7 +78,7 @@ impl Into<Option<i64>> for Rank {
     }
 }
 
-pub async fn check_rank_up(context: &Context, db: &mut DbConn<'_>, points_update: PointsUpdate) -> anyhow::Result<()> {
+pub async fn check_rank_up(context: &Context, db: &mut DbConn, points_update: PointsUpdate) -> anyhow::Result<()> {
     let rank_manager = RankManager::new(db).await?;
 
     // check max of current old points and rank, they might have earned a rank in the past
@@ -111,7 +111,7 @@ pub async fn check_rank_up(context: &Context, db: &mut DbConn<'_>, points_update
     Ok(())
 }
 
-pub async fn give_points(context: &Context, db: &mut DbConn<'_>, user_id: UserId, points: i64) -> anyhow::Result<()> {
+pub async fn give_points(context: &Context, db: &mut DbConn, user_id: UserId, points: i64) -> anyhow::Result<()> {
     let points_update = db.give_user_points(user_id, points).await?;
 
     check_rank_up(context, db, points_update).await?;
