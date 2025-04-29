@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use serenity::all::{
     ButtonStyle, ComponentInteraction, ComponentInteractionDataKind, Context, CreateButton,
     CreateEmbed, CreateMessage, EditMessage, EditThread, Mentionable, Message, UserId,
