@@ -1,5 +1,5 @@
-use serenity::all::ChannelId;
 use poise::macros::ChoiceParameter;
+use serenity::all::ChannelId;
 use strum::FromRepr;
 
 #[derive(Debug, Clone)]
@@ -24,7 +24,18 @@ impl From<Challenge> for ChallengeRaw {
 }
 
 #[repr(i64)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, ChoiceParameter, FromRepr, strum::Display, strum::EnumIter)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    ChoiceParameter,
+    FromRepr,
+    strum::Display,
+    strum::EnumIter,
+)]
 pub enum ChallengeType {
     #[name = "rev"]
     #[strum(to_string = "rev")]

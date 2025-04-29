@@ -1,25 +1,28 @@
 use std::future::Future;
 use std::time::Duration;
 
+use deadpool::{
+    managed::{self, Manager, Pool, Timeouts},
+    Runtime,
+};
 use serenity::all::{ChannelId, MessageId, UserId};
 use sqlx::{sqlite::SqliteConnection, Sqlite};
-use sqlx::{TransactionManager, Connection};
-use deadpool::{Runtime, managed::{self, Manager, Pool, Timeouts}};
+use sqlx::{Connection, TransactionManager};
 
-pub use competition::{Competition, BingoSquare};
-pub use user::{User, UserRaw};
-pub use challenge::{Challenge, ChallengeType};
-pub use solve::{ApprovalStatus, Solve};
-use competition::CompetitionRaw;
 use challenge::ChallengeRaw;
+pub use challenge::{Challenge, ChallengeType};
+use competition::CompetitionRaw;
+pub use competition::{BingoSquare, Competition};
 use solve::SolveRaw;
+pub use solve::{ApprovalStatus, Solve};
+pub use user::{User, UserRaw};
 
 use crate::points::Rank;
 
-mod competition;
-mod user;
 mod challenge;
+mod competition;
 mod solve;
+mod user;
 
 pub struct DbContext {
     pool: Pool<ConnectionManager>,
@@ -46,21 +49,25 @@ impl Manager for ConnectionManager {
     }
 }
 
-struct OutputId { id: i64 }
+struct OutputId {
+    id: i64,
+}
 
 impl DbContext {
     /// Connects to the database at `url`
     pub async fn connect(url: &str) -> Result<Self, anyhow::Error> {
         // TODO: idk what is a good value for max connections
-        let pool = Pool::builder(ConnectionManager { url: String::from(url) })
-            .max_size(5)
-            .timeouts(Timeouts {
-                wait: Some(Duration::from_secs(60)),
-                create: Some(Duration::from_secs(10)),
-                recycle: Some(Duration::from_secs(10)),
-            })
-            .runtime(Runtime::Tokio1)
-            .build()?;
+        let pool = Pool::builder(ConnectionManager {
+            url: String::from(url),
+        })
+        .max_size(5)
+        .timeouts(Timeouts {
+            wait: Some(Duration::from_secs(60)),
+            create: Some(Duration::from_secs(10)),
+            recycle: Some(Duration::from_secs(10)),
+        })
+        .runtime(Runtime::Tokio1)
+        .build()?;
 
         Ok(DbContext { pool })
     }
@@ -68,13 +75,13 @@ impl DbContext {
     pub async fn try_conn(&self) -> Result<DbConn, anyhow::Error> {
         let mut connection = self.pool.get().await?;
         connection.begin().await?;
-        Ok(DbConn {
-            connection,
-        })
+        Ok(DbConn { connection })
     }
 
     pub async fn conn(&self) -> DbConn {
-        self.try_conn().await.expect("could not acquire database connection")
+        self.try_conn()
+            .await
+            .expect("could not acquire database connection")
     }
 }
 
@@ -83,7 +90,7 @@ pub struct DbConn {
 }
 
 impl DbConn {
-    fn connection(& mut self) -> & mut SqliteConnection {
+    fn connection(&mut self) -> &mut SqliteConnection {
         &mut self.connection
     }
 
@@ -97,7 +104,10 @@ impl DbConn {
         Ok(())
     }
 
-    pub async fn create_competition(&mut self, competition: Competition) -> Result<(), anyhow::Error> {
+    pub async fn create_competition(
+        &mut self,
+        competition: Competition,
+    ) -> Result<(), anyhow::Error> {
         let competition_raw: CompetitionRaw = competition.into();
         sqlx::query!(
             "INSERT INTO competition (channel_id, name, bingo) VALUES (?, ?, ?)",
@@ -127,7 +137,10 @@ impl DbConn {
         Ok(competition_raw.into())
     }
 
-    pub async fn update_competition(&mut self, competition: Competition) -> Result<(), anyhow::Error> {
+    pub async fn update_competition(
+        &mut self,
+        competition: Competition,
+    ) -> Result<(), anyhow::Error> {
         let competition_raw: CompetitionRaw = competition.into();
         sqlx::query!(
             "UPDATE competition SET name = ?, bingo = ? WHERE channel_id = ?",
@@ -147,28 +160,32 @@ impl DbConn {
         let _ = sqlx::query!(
             "INSERT INTO users (id, email, points) VALUES (?, NULL, 0)",
             user_id,
-        ).execute(self.connection()).await;
+        )
+        .execute(self.connection())
+        .await;
     }
 
     pub async fn verify_user(&mut self, user_id: UserId, email: &str) -> Result<(), anyhow::Error> {
         self.ensure_user_is_created(user_id).await;
 
         let user_id = user_id.get() as i64;
-        sqlx::query!(
-            "UPDATE users SET email = ? WHERE id = ?",
-            email,
-            user_id,
-        ).execute(self.connection()).await?;
+        sqlx::query!("UPDATE users SET email = ? WHERE id = ?", email, user_id,)
+            .execute(self.connection())
+            .await?;
 
         Ok(())
     }
 
     /// Gives the given user points, creating them if they don't exist
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// Returns the user's points
-    pub async fn give_user_points(&mut self, user_id: UserId, points: i64) -> Result<PointsUpdate, anyhow::Error> {
+    pub async fn give_user_points(
+        &mut self,
+        user_id: UserId,
+        points: i64,
+    ) -> Result<PointsUpdate, anyhow::Error> {
         self.ensure_user_is_created(user_id).await;
 
         let user_id = user_id.get() as i64;
@@ -177,7 +194,9 @@ impl DbConn {
             "UPDATE users SET points = points + ? WHERE id = ? RETURNING id, points, rank",
             points,
             user_id,
-        ).fetch_one(self.connection()).await?;
+        )
+        .fetch_one(self.connection())
+        .await?;
 
         Ok(PointsUpdate::from_raw(result, points))
     }
@@ -185,32 +204,26 @@ impl DbConn {
     pub async fn set_rank(&mut self, user_id: UserId, rank: Rank) -> Result<(), anyhow::Error> {
         let user_id = user_id.get() as i64;
         let rank: Option<i64> = rank.into();
-        sqlx::query!(
-            "UPDATE users SET rank = ? WHERE id = ?",
-            rank,
-            user_id,
-        ).execute(self.connection()).await?;
+        sqlx::query!("UPDATE users SET rank = ? WHERE id = ?", rank, user_id,)
+            .execute(self.connection())
+            .await?;
 
         Ok(())
     }
 
     pub async fn get_user_by_id(&mut self, id: UserId) -> Result<User, anyhow::Error> {
         let id = id.get() as i64;
-        let user_raw = sqlx::query_as!(
-            UserRaw,
-            "SELECT * FROM users WHERE id = ?",
-            id,
-        ).fetch_one(self.connection()).await?;
+        let user_raw = sqlx::query_as!(UserRaw, "SELECT * FROM users WHERE id = ?", id,)
+            .fetch_one(self.connection())
+            .await?;
 
         Ok(user_raw.into())
     }
 
     pub async fn get_user_by_email(&mut self, email: &str) -> Result<User, anyhow::Error> {
-        let user_raw = sqlx::query_as!(
-            UserRaw,
-            "SELECT * FROM users WHERE email = ?",
-            email,
-        ).fetch_one(self.connection()).await?;
+        let user_raw = sqlx::query_as!(UserRaw, "SELECT * FROM users WHERE email = ?", email,)
+            .fetch_one(self.connection())
+            .await?;
 
         Ok(user_raw.into())
     }
@@ -221,8 +234,10 @@ impl DbConn {
             UserRaw,
             "SELECT * FROM users ORDER BY points DESC LIMIT ?",
             count,
-        ).map(|user| User::from(user))
-            .fetch_all(self.connection()).await?)
+        )
+        .map(|user| User::from(user))
+        .fetch_all(self.connection())
+        .await?)
     }
 
     /// Creates a new challenge, returning its id
@@ -236,25 +251,37 @@ impl DbConn {
             challenge_raw.name,
             challenge_raw.category,
             challenge_raw.channel_id,
-        ).fetch_one(self.connection()).await?.id;
+        )
+        .fetch_one(self.connection())
+        .await?
+        .id;
 
         Ok(id)
     }
 
-    pub async fn get_challenge_by_channel_id(&mut self, challenge_id: ChannelId) -> Result<Challenge, anyhow::Error> {
+    pub async fn get_challenge_by_channel_id(
+        &mut self,
+        challenge_id: ChannelId,
+    ) -> Result<Challenge, anyhow::Error> {
         let challenge_id = challenge_id.get() as i64;
 
         let challenge = sqlx::query_as!(
             ChallengeRaw,
             "SELECT * FROM challenges WHERE channel_id = ?",
             challenge_id,
-        ).fetch_one(self.connection()).await?;
+        )
+        .fetch_one(self.connection())
+        .await?;
 
         Ok(challenge.into())
     }
 
     /// Creates a new solve solved by the given users and returns the solve id
-    pub async fn create_solve(&mut self, solve: Solve, users: &[UserId]) -> Result<i64, anyhow::Error> {
+    pub async fn create_solve(
+        &mut self,
+        solve: Solve,
+        users: &[UserId],
+    ) -> Result<i64, anyhow::Error> {
         let solve_raw: SolveRaw = solve.into();
 
         let OutputId { id: solve_id } = sqlx::query_as!(
@@ -265,7 +292,9 @@ impl DbConn {
             solve_raw.approval_message_id,
             solve_raw.flag,
             solve_raw.approval_status,
-        ).fetch_one(self.connection()).await?;
+        )
+        .fetch_one(self.connection())
+        .await?;
 
         for user_id in users {
             let user_id = user_id.get() as i64;
@@ -275,30 +304,42 @@ impl DbConn {
             let _ = sqlx::query!(
                 "INSERT INTO users (id, email, points) VALUES (?, NULL, 0)",
                 user_id,
-            ).execute(self.connection()).await;
+            )
+            .execute(self.connection())
+            .await;
 
             sqlx::query!(
                 "INSERT INTO user_solves (user_id, solve_id) VALUES (?, ?)",
                 user_id,
                 solve_id,
-            ).execute(self.connection()).await?;
+            )
+            .execute(self.connection())
+            .await?;
         }
 
         Ok(solve_id)
     }
 
-    pub async fn get_solve_by_approval_message_id(&mut self, message_id: MessageId) -> Result<Solve, anyhow::Error> {
+    pub async fn get_solve_by_approval_message_id(
+        &mut self,
+        message_id: MessageId,
+    ) -> Result<Solve, anyhow::Error> {
         let id = message_id.get() as i64;
         let solve_raw = sqlx::query_as!(
             SolveRaw,
             "SELECT * FROM solves WHERE approval_message_id = ?",
             id,
-        ).fetch_one(self.connection()).await?;
+        )
+        .fetch_one(self.connection())
+        .await?;
 
         Ok(solve_raw.into())
     }
 
-    pub async fn get_solved_challenges_for_user(&mut self, user_id: UserId) -> Result<Vec<Challenge>, anyhow::Error> {
+    pub async fn get_solved_challenges_for_user(
+        &mut self,
+        user_id: UserId,
+    ) -> Result<Vec<Challenge>, anyhow::Error> {
         let id = user_id.get() as i64;
         let solves = sqlx::query_as!(
             ChallengeRaw,
@@ -308,8 +349,10 @@ impl DbConn {
             WHERE user_solves.user_id = ? AND solves.approval_status = ?",
             id,
             ApprovalStatus::Approved as i64,
-        ).map(|solve| Challenge::from(solve))
-            .fetch_all(self.connection()).await?;
+        )
+        .map(|solve| Challenge::from(solve))
+        .fetch_all(self.connection())
+        .await?;
 
         Ok(solves)
     }
@@ -323,13 +366,19 @@ impl DbConn {
             solve_raw.flag,
             solve_raw.approval_status,
             solve_raw.id,
-        ).execute(self.connection()).await?;
+        )
+        .execute(self.connection())
+        .await?;
 
         Ok(())
     }
 
     /// Gives all the participants of this solve some points
-    pub async fn give_points_for_solve(&mut self, solve_id: i64, points: i64) -> Result<Vec<PointsUpdate>, anyhow::Error> {
+    pub async fn give_points_for_solve(
+        &mut self,
+        solve_id: i64,
+        points: i64,
+    ) -> Result<Vec<PointsUpdate>, anyhow::Error> {
         let result = sqlx::query_as!(
             PointsUpdateRaw,
             "UPDATE users SET points = points + ? WHERE id IN
@@ -337,8 +386,10 @@ impl DbConn {
             RETURNING id, points, rank",
             points,
             solve_id,
-        ).map(|update| PointsUpdate::from_raw(update, points))
-            .fetch_all(self.connection()).await?;
+        )
+        .map(|update| PointsUpdate::from_raw(update, points))
+        .fetch_all(self.connection())
+        .await?;
 
         Ok(result)
     }

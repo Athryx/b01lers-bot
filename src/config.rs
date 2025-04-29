@@ -1,8 +1,8 @@
 use std::{path::Path, sync::OnceLock};
 
-use tokio::fs::read_to_string;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serenity::all::{ChannelId, EmojiId, GuildId};
+use tokio::fs::read_to_string;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -52,7 +52,8 @@ static CONFIG: OnceLock<Config> = OnceLock::new();
 pub async fn load_config(path: &Path) -> anyhow::Result<()> {
     let config_data = read_to_string(path).await?;
     let config = toml::from_str(&config_data)?;
-    CONFIG.set(config)
+    CONFIG
+        .set(config)
         .or_else(|_| Err(anyhow::anyhow!("config already loaded")))?;
 
     Ok(())

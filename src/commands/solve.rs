@@ -1,15 +1,25 @@
-use serenity::all::{ButtonStyle, ComponentInteraction, ComponentInteractionDataKind, Context, CreateButton, CreateEmbed, CreateMessage, EditMessage, EditThread, Mentionable, Message, UserId};
+use std::collections::HashSet;
+
+use serenity::all::{
+    ButtonStyle, ComponentInteraction, ComponentInteractionDataKind, Context, CreateButton,
+    CreateEmbed, CreateMessage, EditMessage, EditThread, Mentionable, Message, UserId,
+};
 
 use crate::config::config;
 use crate::db::{ApprovalStatus, Challenge, ChallengeType, Competition, Solve};
 use crate::points::check_rank_up;
 
-use super::{CmdContext, CommandContext, Error, competition::{get_competition_from_ctx, get_challenge_from_ctx}};
+use super::{
+    competition::{get_challenge_from_ctx, get_competition_from_ctx},
+    CmdContext, CommandContext, Error,
+};
 
 fn append_solver_ids(solvers: &mut Vec<UserId>, solver_ids: &[Option<UserId>]) {
     for solver_id in solver_ids {
         if let Some(id) = solver_id {
-            solvers.push(*id);
+            if !solvers.contains(&id) {
+                solvers.push(*id);
+            }
         }
     }
 }
@@ -33,10 +43,13 @@ pub async fn solve(
     let competition = get_competition_from_ctx(&ctx).await?;
     let challenge = get_challenge_from_ctx(&ctx).await?;
 
-    let mut challenge_channel = ctx.guild_channel().await
+    let mut challenge_channel = ctx
+        .guild_channel()
+        .await
         .ok_or_else(|| anyhow::anyhow!("You are not inside a challenge channel."))?;
 
-    let competition_forum_channel = challenge_channel.parent_id
+    let competition_forum_channel = challenge_channel
+        .parent_id
         .ok_or_else(|| anyhow::anyhow!("You are not inside a challenge channel."))?
         .to_channel(ctx)
         .await
@@ -45,26 +58,16 @@ pub async fn solve(
         .ok_or_else(|| anyhow::anyhow!("You are not inside a challenge channel."))?;
 
     let mut solver_ids = vec![ctx.author().id];
-    append_solver_ids(&mut solver_ids, &[
-        teammate1,
-        teammate2,
-        teammate3,
-        teammate4,
-        teammate5,
-        teammate6,
-        teammate7,
-        teammate8,
-        teammate9,
-        teammate10,
-    ]);
+    append_solver_ids(
+        &mut solver_ids,
+        &[
+            teammate1, teammate2, teammate3, teammate4, teammate5, teammate6, teammate7, teammate8,
+            teammate9, teammate10,
+        ],
+    );
 
-    let approval_message = send_approval_message(
-        &ctx,
-        &competition,
-        &challenge,
-        &solver_ids,
-        &flag,
-    ).await?;
+    let approval_message =
+        send_approval_message(&ctx, &competition, &challenge, &solver_ids, &flag).await?;
 
     let solve = Solve {
         id: 0,
@@ -81,14 +84,21 @@ pub async fn solve(
     conn.commit().await?;
 
     // mark challenge channel as solved
-    let tag_ids = competition_forum_channel.available_tags
+    let tag_ids = competition_forum_channel
+        .available_tags
         .iter()
         .filter(|t| t.name == challenge.category.to_string() || t.name == "solved")
         .map(|t| t.id);
 
-    challenge_channel.edit_thread(ctx, EditThread::new().applied_tags(tag_ids)).await?;
+    challenge_channel
+        .edit_thread(ctx, EditThread::new().applied_tags(tag_ids))
+        .await?;
 
-    ctx.say(format!("Your solve for {} has been recorded with request ID {solve_id}.", challenge.name)).await?;
+    ctx.say(format!(
+        "Your solve for {} has been recorded with request ID {solve_id}.",
+        challenge.name
+    ))
+    .await?;
 
     Ok(())
 }
@@ -114,18 +124,13 @@ pub async fn quick_solve(
     let competition = get_competition_from_ctx(&ctx).await?;
 
     let mut solver_ids = vec![ctx.author().id];
-    append_solver_ids(&mut solver_ids, &[
-        teammate1,
-        teammate2,
-        teammate3,
-        teammate4,
-        teammate5,
-        teammate6,
-        teammate7,
-        teammate8,
-        teammate9,
-        teammate10,
-    ]);
+    append_solver_ids(
+        &mut solver_ids,
+        &[
+            teammate1, teammate2, teammate3, teammate4, teammate5, teammate6, teammate7, teammate8,
+            teammate9, teammate10,
+        ],
+    );
 
     let mut conn = ctx.data().conn().await;
 
@@ -137,14 +142,9 @@ pub async fn quick_solve(
         channel_id: None,
     };
     challenge.id = conn.create_challenge(challenge.clone()).await?;
-    
-    let approval_message = send_approval_message(
-        &ctx,
-        &competition,
-        &challenge,
-        &solver_ids,
-        &flag,
-    ).await?;
+
+    let approval_message =
+        send_approval_message(&ctx, &competition, &challenge, &solver_ids, &flag).await?;
 
     let solve = Solve {
         id: 0,
@@ -158,7 +158,11 @@ pub async fn quick_solve(
 
     conn.commit().await?;
 
-    ctx.say(format!("Your solve for {} has been recorded with request ID {solve_id}.", challenge.name)).await?;
+    ctx.say(format!(
+        "Your solve for {} has been recorded with request ID {solve_id}.",
+        challenge.name
+    ))
+    .await?;
 
     Ok(())
 }
@@ -178,7 +182,10 @@ async fn send_approval_message(
 
     let approval_embed = CreateEmbed::new()
         .title(format!("New Solve Request"))
-        .description(format!("Here is a new CTF solve request submitted by {}", ctx.author().id.mention()))
+        .description(format!(
+            "Here is a new CTF solve request submitted by {}",
+            ctx.author().id.mention()
+        ))
         .color(0xc22026)
         .thumbnail("https://pbs.twimg.com/profile_images/568451513295441921/9Hm60msK_400x400.png")
         .field("Challenge", &challenge.name, true)
@@ -202,14 +209,21 @@ async fn send_approval_message(
         .button(accept_button)
         .button(reject_button);
 
-    let approval_message = config().server.solve_approvals_channel_id
-        .send_message(ctx, approval_message).await?;
+    let approval_message = config()
+        .server
+        .solve_approvals_channel_id
+        .send_message(ctx, approval_message)
+        .await?;
 
     Ok(approval_message)
 }
 
 /// Recieves Component Interaction events and updates solve status if they are an approval button
-pub async fn handle_approval_button(context: &Context, cmd_context: &CommandContext, interaction: &ComponentInteraction) -> anyhow::Result<()> {
+pub async fn handle_approval_button(
+    context: &Context,
+    cmd_context: &CommandContext,
+    interaction: &ComponentInteraction,
+) -> anyhow::Result<()> {
     let mut conn = cmd_context.conn().await;
 
     if matches!(interaction.data.kind, ComponentInteractionDataKind::Button) {
@@ -217,12 +231,19 @@ pub async fn handle_approval_button(context: &Context, cmd_context: &CommandCont
         let mut solve = conn.get_solve_by_approval_message_id(message.id).await?;
 
         if solve.approval_status != ApprovalStatus::Pending {
-            message.reply(context, format!("solve is alredy {}", solve.approval_status)).await?;
+            message
+                .reply(
+                    context,
+                    format!("solve is alredy {}", solve.approval_status),
+                )
+                .await?;
         } else if interaction.data.custom_id == "accept" {
             solve.approval_status = ApprovalStatus::Approved;
 
             // give participants points for solving
-            let points_updates = conn.give_points_for_solve(solve.id, config().ranks.points_per_solve).await?;
+            let points_updates = conn
+                .give_points_for_solve(solve.id, config().ranks.points_per_solve)
+                .await?;
 
             // rank people up as necassary
             for points_update in points_updates {
@@ -230,17 +251,21 @@ pub async fn handle_approval_button(context: &Context, cmd_context: &CommandCont
             }
 
             let edit = EditMessage::new()
-                .content(format!("This request is approved by {}", interaction.user.id.mention()))
+                .content(format!(
+                    "This request is approved by {}",
+                    interaction.user.id.mention()
+                ))
                 .components(Vec::new());
 
             message.edit(context, edit).await?;
-
-
         } else if interaction.data.custom_id == "reject" {
             solve.approval_status = ApprovalStatus::Declined;
 
             let edit = EditMessage::new()
-                .content(format!("This request is declined by {}", interaction.user.id.mention()))
+                .content(format!(
+                    "This request is declined by {}",
+                    interaction.user.id.mention()
+                ))
                 .components(Vec::new());
 
             message.edit(context, edit).await?;

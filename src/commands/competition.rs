@@ -1,11 +1,14 @@
 use anyhow::Context;
-use serenity::all::{Builder, ChannelFlags, ChannelType, CreateChannel, CreateEmbed, CreateForumTag, CreateMessage, EditChannel, EditThread, ForumEmoji, ReactionType, ChannelId};
+use serenity::all::{
+    Builder, ChannelFlags, ChannelId, ChannelType, CreateChannel, CreateEmbed, CreateForumTag,
+    CreateMessage, EditChannel, EditThread, ForumEmoji, ReactionType,
+};
 use serenity::builder::CreateForumPost;
 
 use crate::config::config;
-use crate::db::{BingoSquare, Competition, Challenge};
+use crate::db::{BingoSquare, Challenge, Competition};
 
-use super::{CmdContext, Error, has_perms};
+use super::{has_perms, CmdContext, Error};
 
 /// Creates a new ctf competition channel.
 #[poise::command(slash_command)]
@@ -30,7 +33,8 @@ pub async fn competition(
 
     // TODO: prettier error
     // Create forum channel
-    let creds_str = &format!("**{name}**\n{url}\n\n**Username**: {username}\n**Password**: {password}");
+    let creds_str =
+        &format!("**{name}**\n{url}\n\n**Username**: {username}\n**Password**: {password}");
     let mut forum = CreateChannel::new(&name)
         .category(config().server.ctf_category_id)
         .position(0)
@@ -43,23 +47,22 @@ pub async fn competition(
     // Add category and solved tags to forum channel
     let tags = vec![
         CreateForumTag::new("welcome").emoji(ReactionType::Unicode("🎉".to_string())),
-
         CreateForumTag::new("web").emoji(ReactionType::Unicode("🌐".to_string())),
         CreateForumTag::new("crypto").emoji(ReactionType::Unicode("🧮".to_string())),
         CreateForumTag::new("pwn").emoji(ReactionType::Unicode("💥".to_string())),
         CreateForumTag::new("rev").emoji(ReactionType::Unicode("🛠️".to_string())),
         CreateForumTag::new("misc").emoji(ReactionType::Unicode("⚙️".to_string())),
-
         CreateForumTag::new("forensics").emoji(ReactionType::Unicode("🔍".to_string())),
         CreateForumTag::new("osint").emoji(ReactionType::Unicode("🕵️".to_string())),
         CreateForumTag::new("blockchain").emoji(ReactionType::Unicode("⛓".to_string())),
         CreateForumTag::new("programming").emoji(ReactionType::Unicode("👨‍💻".to_string())),
         CreateForumTag::new("jail").emoji(ReactionType::Unicode("🚔".to_string())),
-
         CreateForumTag::new("unsolved").emoji(ReactionType::Unicode("❌".to_string())),
         CreateForumTag::new("solved").emoji(ReactionType::Unicode("✅".to_string())),
     ];
-    forum.edit(ctx, EditChannel::new().available_tags(tags)).await?;
+    forum
+        .edit(ctx, EditChannel::new().available_tags(tags))
+        .await?;
 
     // Create post with credentials
     let credentials_embed = CreateEmbed::new()
@@ -69,13 +72,20 @@ pub async fn competition(
         .field("Username", username, false)
         .field("Password", password, false);
 
-    let mut creds_channel = forum.create_forum_post(ctx, CreateForumPost::new("Credentials + general discussion", CreateMessage::new().add_embed(credentials_embed)))
+    let mut creds_channel = forum
+        .create_forum_post(
+            ctx,
+            CreateForumPost::new(
+                "Credentials + general discussion",
+                CreateMessage::new().add_embed(credentials_embed),
+            ),
+        )
         .await?;
 
     // Pin credentials / general discussion post
-    creds_channel.edit_thread(ctx, EditThread::new()
-        .flags(ChannelFlags::PINNED)
-    ).await?;
+    creds_channel
+        .edit_thread(ctx, EditThread::new().flags(ChannelFlags::PINNED))
+        .await?;
 
     // Pin credentials message in creds channel
     if let Some(creds_message_id) = creds_channel.last_message_id {

@@ -4,13 +4,16 @@
 //! and sending it to the purdue email.
 //! Then the user types in the toke and it is decrypted and added to the database.
 
-use chacha20poly1305::{AeadCore, XChaCha20Poly1305, aead::{OsRng, Aead}};
 use base64::prelude::*;
-use serde::{Serialize, Deserialize};
-use serenity::all::UserId;
+use chacha20poly1305::{
+    aead::{Aead, OsRng},
+    AeadCore, XChaCha20Poly1305,
+};
 use email_address_parser::EmailAddress;
+use serde::{Deserialize, Serialize};
+use serenity::all::UserId;
 
-use super::{CmdContext, Error, add_role_to_user};
+use super::{add_role_to_user, CmdContext, Error};
 use crate::config::config;
 
 const NONCE_SIZE: usize = 24;
@@ -22,7 +25,9 @@ struct TokenData<'a> {
 }
 
 #[poise::command(slash_command, subcommands("email", "token"))]
-pub async fn verify(_ctx: CmdContext<'_>) -> Result<(), Error> { Ok(()) }
+pub async fn verify(_ctx: CmdContext<'_>) -> Result<(), Error> {
+    Ok(())
+}
 
 /// Enter your purdue email to recieve a verification token
 #[poise::command(slash_command)]
@@ -31,8 +36,8 @@ pub async fn email(
     #[description = "Purdue email to send verification token to"] email: String,
 ) -> Result<(), Error> {
     // None for strict email parsing
-    let parsed_email = EmailAddress::parse(&email, None)
-        .ok_or(anyhow::anyhow!("Invalid email address"))?;
+    let parsed_email =
+        EmailAddress::parse(&email, None).ok_or(anyhow::anyhow!("Invalid email address"))?;
 
     if parsed_email.get_domain() != "purdue.edu" {
         return Err(anyhow::anyhow!("Email is not a purdue.edu email"));
@@ -44,11 +49,14 @@ pub async fn email(
         email: &email,
     };
 
-    let token_json = serde_json::to_string(&token_data)
-        .or(Err(anyhow::anyhow!("Could not generate token")))?;
+    let token_json =
+        serde_json::to_string(&token_data).or(Err(anyhow::anyhow!("Could not generate token")))?;
 
     let nonce = XChaCha20Poly1305::generate_nonce(&mut OsRng);
-    let mut token = ctx.data().verify_token_cipher.encrypt(&nonce, token_json.as_bytes())
+    let mut token = ctx
+        .data()
+        .verify_token_cipher
+        .encrypt(&nonce, token_json.as_bytes())
         .or(Err(anyhow::anyhow!("Could not generate token")))?;
 
     token.extend(nonce);
@@ -61,7 +69,8 @@ pub async fn email(
         &format!("Your verication token is: `{token_base64}`.<br>Use `/verify token token:{token_base64}` with the b01lers-bot to verify yourself."),
     ).await?;
 
-    ctx.say("Verification token has been sent to your purdue email").await?;
+    ctx.say("Verification token has been sent to your purdue email")
+        .await?;
 
     Ok(())
 }
@@ -84,7 +93,10 @@ pub async fn token(
 
     let ciphertext = &token_bytes[..token_bytes.len() - NONCE_SIZE];
 
-    let token_bytes = ctx.data().verify_token_cipher.decrypt(&nonce.into(), ciphertext)
+    let token_bytes = ctx
+        .data()
+        .verify_token_cipher
+        .decrypt(&nonce.into(), ciphertext)
         .or(Err(anyhow::anyhow!("Invalid token")))?;
 
     let token_data: TokenData<'_> = serde_json::from_slice(&token_bytes)?;
@@ -92,7 +104,9 @@ pub async fn token(
 
     // make sure verify token is being run on same discord account that used verify email
     if id != ctx.author().id {
-        return Err(anyhow::anyhow!("Discord user id does not match token user id"));
+        return Err(anyhow::anyhow!(
+            "Discord user id does not match token user id"
+        ));
     }
 
     let mut conn = ctx.data().conn().await;

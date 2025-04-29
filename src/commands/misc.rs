@@ -16,12 +16,22 @@ pub async fn welcome(ctx: CmdContext<'_>) -> Result<(), Error> {
 #[poise::command(slash_command)]
 pub async fn get_roles(ctx: CmdContext<'_>) -> Result<(), Error> {
     let user_id = ctx.author().id;
-    let user = ctx.data().conn().await.get_user_by_id(ctx.author().id).await?;
+    let user = ctx
+        .data()
+        .conn()
+        .await
+        .get_user_by_id(ctx.author().id)
+        .await?;
 
     let mut roles_given = Vec::new();
 
     if user.is_verified() {
-        add_role_to_user(ctx.serenity_context(), user_id, &config().server.member_role).await?;
+        add_role_to_user(
+            ctx.serenity_context(),
+            user_id,
+            &config().server.member_role,
+        )
+        .await?;
         roles_given.push(config().server.member_role.to_string());
     }
 
@@ -31,7 +41,8 @@ pub async fn get_roles(ctx: CmdContext<'_>) -> Result<(), Error> {
     }
 
     if roles_given.len() > 0 {
-        ctx.say(format!("Gave roles `{}`", roles_given.join(", "))).await?;
+        ctx.say(format!("Gave roles `{}`", roles_given.join(", ")))
+            .await?;
     } else {
         ctx.say("You don't have any roles to get").await?;
     }
@@ -49,8 +60,7 @@ pub async fn dm(
         return Err(anyhow::anyhow!("You do not have permissions to send a dm."));
     }
 
-    let message = CreateMessage::new()
-        .content(message);
+    let message = CreateMessage::new().content(message);
 
     user.direct_message(ctx, message).await?;
 

@@ -2,7 +2,7 @@ use std::io::Write;
 
 use serenity::all::{ChannelId, Context, CreateEmbed, CreateMessage};
 use tracing::Level;
-use tracing_subscriber::{FmtSubscriber, fmt::MakeWriter};
+use tracing_subscriber::{fmt::MakeWriter, FmtSubscriber};
 
 use crate::config::config;
 
@@ -52,8 +52,7 @@ impl Write for ChannelWriter {
             .description(format!("```ansi\n{message_content}\n```"))
             .color(0xc22026);
 
-        let message = CreateMessage::new()
-            .add_embed(message_embed);
+        let message = CreateMessage::new().add_embed(message_embed);
 
         let channel_id = self.channel_id;
         let context = self.context.clone();
@@ -84,6 +83,5 @@ pub fn init_logging(context: Context) {
         .pretty()
         .finish();
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("setting up logging failed");
+    tracing::subscriber::set_global_default(subscriber).expect("setting up logging failed");
 }

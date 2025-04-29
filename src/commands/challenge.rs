@@ -2,8 +2,8 @@ use poise::CreateReply;
 use serenity::all::{CreateEmbed, CreateMessage};
 use serenity::builder::CreateForumPost;
 
-use crate::commands::{CmdContext, Error};
 use crate::commands::competition::get_competition_from_ctx;
+use crate::commands::{CmdContext, Error};
 use crate::db::{Challenge, ChallengeType};
 
 /// Creates a new thread for a challenge.
@@ -28,13 +28,20 @@ pub async fn challenge(
         .filter(|t| t.name == category.to_string() || t.name == "unsolved")
         .map(|t| t.id);
 
-    let channel_embed = CreateEmbed::new()
-        .color(0xc22026)
-        .description(&format!("Discussion for **{category}/{name}**. See **Credentials** for CTF credentials."));
+    let channel_embed = CreateEmbed::new().color(0xc22026).description(&format!(
+        "Discussion for **{category}/{name}**. See **Credentials** for CTF credentials."
+    ));
 
-    let thread = forum.create_forum_post(ctx, CreateForumPost::new(format!("{category}/{name}"), CreateMessage::new().add_embed(channel_embed))
-        .set_applied_tags(tag_ids)
-    ).await?;
+    let thread = forum
+        .create_forum_post(
+            ctx,
+            CreateForumPost::new(
+                format!("{category}/{name}"),
+                CreateMessage::new().add_embed(channel_embed),
+            )
+            .set_applied_tags(tag_ids),
+        )
+        .await?;
 
     let mut conn = ctx.data().conn().await;
 
@@ -49,11 +56,15 @@ pub async fn challenge(
 
     conn.commit().await?;
 
-    let success_embed = CreateEmbed::new()
-        .color(0xc22026)
-        .description(&format!("Created channel for **{category}/{name}**.\n→ {thread}"));
+    let success_embed = CreateEmbed::new().color(0xc22026).description(&format!(
+        "Created channel for **{category}/{name}**.\n→ {thread}"
+    ));
 
-    ctx.send(CreateReply { embeds: vec![success_embed], ..Default::default() }).await?;
+    ctx.send(CreateReply {
+        embeds: vec![success_embed],
+        ..Default::default()
+    })
+    .await?;
 
     Ok(())
 }

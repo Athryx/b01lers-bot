@@ -1,8 +1,8 @@
 use serenity::all::EditChannel;
 
-use crate::config::config;
-use crate::commands::{CmdContext, Error, has_perms};
 use crate::commands::competition::get_competition_from_ctx;
+use crate::commands::{has_perms, CmdContext, Error};
+use crate::config::config;
 
 /// Archives the current competition channel.
 #[poise::command(slash_command)]
@@ -26,10 +26,11 @@ pub async fn archive(ctx: CmdContext<'_>) -> Result<(), Error> {
         .guild()
         .expect("You are not inside a competition channel.");
 
-    if channel.parent_id.is_some_and(|id| id == archived_category_id) {
-        return Err(anyhow::anyhow!(
-            "This competition is already archived!"
-        ))
+    if channel
+        .parent_id
+        .is_some_and(|id| id == archived_category_id)
+    {
+        return Err(anyhow::anyhow!("This competition is already archived!"));
     }
 
     // Move the channel to the archived category.

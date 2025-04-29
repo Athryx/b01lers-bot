@@ -3,8 +3,8 @@ use serenity::all::{CreateEmbed, Mentionable};
 use strum::IntoEnumIterator;
 
 use crate::config::config;
-use crate::points::{get_point_cutoffs, points_to_string};
 use crate::db::ChallengeType;
+use crate::points::{get_point_cutoffs, points_to_string};
 
 use super::{CmdContext, Error};
 
@@ -17,7 +17,12 @@ pub async fn stats(_ctx: CmdContext<'_>) -> Result<(), Error> {
 #[poise::command(slash_command)]
 pub async fn solves(ctx: CmdContext<'_>) -> Result<(), Error> {
     let user_id = ctx.author().id;
-    let solves = ctx.data().conn().await.get_solved_challenges_for_user(user_id).await?;
+    let solves = ctx
+        .data()
+        .conn()
+        .await
+        .get_solved_challenges_for_user(user_id)
+        .await?;
 
     let mut stats_embed = CreateEmbed::new()
         .title("CTF Solve Stats")
@@ -25,15 +30,15 @@ pub async fn solves(ctx: CmdContext<'_>) -> Result<(), Error> {
         .color(0xc22026);
 
     for category in ChallengeType::iter() {
-        let solve_count = solves.iter()
+        let solve_count = solves
+            .iter()
             .filter(|solve| solve.category == category)
             .count();
 
         stats_embed = stats_embed.field(category.to_string(), solve_count.to_string(), true);
     }
 
-    let message = CreateReply::default()
-        .embed(stats_embed);
+    let message = CreateReply::default().embed(stats_embed);
 
     ctx.send(message).await?;
 
@@ -52,7 +57,15 @@ pub async fn leaderboard(ctx: CmdContext<'_>) -> Result<(), Error> {
     let mut users = String::new();
     let mut points = String::new();
 
-    for (i, user) in ctx.data().conn().await.get_users_by_points(10).await?.iter().enumerate() {
+    for (i, user) in ctx
+        .data()
+        .conn()
+        .await
+        .get_users_by_points(10)
+        .await?
+        .iter()
+        .enumerate()
+    {
         let position = match i {
             0 => "🥇".to_string(),
             1 => "🥈".to_string(),
@@ -64,11 +77,11 @@ pub async fn leaderboard(ctx: CmdContext<'_>) -> Result<(), Error> {
         points.push_str(&format!("{}\n", points_to_string(user.points)));
     }
 
-    embed = embed.field("Users", users, true)
+    embed = embed
+        .field("Users", users, true)
         .field("Points", points, true);
 
-    let message = CreateReply::default()
-        .embed(embed);
+    let message = CreateReply::default().embed(embed);
 
     ctx.send(message).await?;
 
@@ -91,11 +104,14 @@ pub async fn rank(ctx: CmdContext<'_>) -> Result<(), Error> {
     let cutoffs = get_point_cutoffs(&mut conn).await?;
     let rank_names = &config().ranks.rank_names;
     for (i, (rank, points)) in rank_names.iter().zip(cutoffs).enumerate() {
-        embed = embed.field(rank, format!("Rank #{i} @ {} points.", points_to_string(points)), true);
+        embed = embed.field(
+            rank,
+            format!("Rank #{i} @ {} points.", points_to_string(points)),
+            true,
+        );
     }
 
-    let message = CreateReply::default()
-        .embed(embed);
+    let message = CreateReply::default().embed(embed);
 
     ctx.send(message).await?;
 
