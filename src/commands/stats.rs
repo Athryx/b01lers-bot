@@ -1,5 +1,5 @@
 use poise::CreateReply;
-use serenity::all::{CreateEmbed, Mentionable};
+use serenity::all::{CreateEmbed, Mentionable, UserId};
 use strum::IntoEnumIterator;
 
 use crate::config::config;
@@ -15,8 +15,15 @@ pub async fn stats(_ctx: CmdContext<'_>) -> Result<(), Error> {
 
 /// Gets statiscits about the challenges you have solved
 #[poise::command(slash_command)]
-pub async fn solves(ctx: CmdContext<'_>) -> Result<(), Error> {
-    let user_id = ctx.author().id;
+pub async fn solves(
+    ctx: CmdContext<'_>,
+    #[description = "User to list stats for (empty to list your own stats)"] user: Option<UserId>,
+) -> Result<(), Error> {
+    let user_id = match user {
+        Some(user_id) => user_id,
+        None => ctx.author().id,
+    };
+
     let solves = ctx
         .data()
         .conn()
@@ -26,7 +33,7 @@ pub async fn solves(ctx: CmdContext<'_>) -> Result<(), Error> {
 
     let mut stats_embed = CreateEmbed::new()
         .title("CTF Solve Stats")
-        .description("Number of challenges in each catagory you have solved")
+        .description(format!("Number of challenges {} has solved in each catagory", user_id.mention()))
         .color(0xc22026);
 
     for category in ChallengeType::iter() {
