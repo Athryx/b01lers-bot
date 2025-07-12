@@ -38,11 +38,12 @@ pub async fn competition(
     if password.contains("`") {
         return Err(anyhow::anyhow!("Password cannot include a backtick (\\`)"));
     }
-
+    let username_esc = format!("`{username}`");
+    let password_esc = format!("`{password}`");
     // TODO: prettier error
     // Create forum channel
     let creds_str =
-        &format!("**{name}**\n{url}\n\n**Username**: `{username}`\n**Password**: `{password}`");
+        &format!("**{name}**\n{url}\n\n**Username**: {username_esc}\n**Password**: {password_esc}");
     let mut forum = CreateChannel::new(&name)
         .category(config().server.ctf_category_id)
         .position(0)
@@ -77,8 +78,8 @@ pub async fn competition(
         .color(0xc22026)
         .title(&format!("{name} credentials"))
         .description(url)
-        .field("Username", username, false)
-        .field("Password", password, false);
+        .field("Username", username_esc, false)
+        .field("Password", password_esc, false);
 
     let mut creds_channel = forum
         .create_forum_post(
