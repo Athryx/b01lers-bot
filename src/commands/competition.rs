@@ -31,10 +31,18 @@ pub async fn competition(
         ));
     }
 
+    if username.contains("`") {
+        return Err(anyhow::anyhow!("Username cannot include a backtick (\\`)"));
+    }
+
+    if password.contains("`") {
+        return Err(anyhow::anyhow!("Password cannot include a backtick (\\`)"));
+    }
+
     // TODO: prettier error
     // Create forum channel
     let creds_str =
-        &format!("**{name}**\n{url}\n\n**Username**: {username}\n**Password**: {password}");
+        &format!("**{name}**\n{url}\n\n**Username**: `{username}`\n**Password**: `{password}`");
     let mut forum = CreateChannel::new(&name)
         .category(config().server.ctf_category_id)
         .position(0)
