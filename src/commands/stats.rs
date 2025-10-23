@@ -97,10 +97,18 @@ pub async fn leaderboard(ctx: CmdContext<'_>) -> Result<(), Error> {
 
 /// Lists your points and the point requirements of other ranks
 #[poise::command(slash_command)]
-pub async fn rank(ctx: CmdContext<'_>) -> Result<(), Error> {
+pub async fn rank(
+    ctx: CmdContext<'_>,
+    #[description = "User to list stats for (empty to list your own stats)"] user: Option<UserId>,
+) -> Result<(), Error> {
+    let user_id = match user {
+        Some(user_id) => user_id,
+        None => ctx.author().id,
+    };
+
     let mut conn = ctx.data().conn().await;
 
-    let user = conn.get_user_by_id(ctx.author().id).await?;
+    let user = conn.get_user_by_id(user_id).await?;
 
     let mut embed = CreateEmbed::new()
         .title("Server Rank")
