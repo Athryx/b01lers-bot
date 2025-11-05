@@ -51,6 +51,10 @@ pub async fn handle_ctf_join(
         .get(&channel_id)
         .ok_or(anyhow::anyhow!("CTF not found in channel"))?;
 
+    let mut conn = cmd_context.conn().await;
+    conn.add_ctf_participant(member_id, channel_id).await?;
+    conn.commit().await?;
+
     ctf.create_permission(
         context,
         PermissionOverwrite {
@@ -63,12 +67,6 @@ pub async fn handle_ctf_join(
         },
     )
     .await?;
-
-    cmd_context
-        .conn()
-        .await
-        .add_ctf_participant(member_id, channel_id)
-        .await?;
     interaction.defer(context).await?;
 
     Ok(())

@@ -4,12 +4,12 @@ use anyhow::Context;
 use serenity::all::{
     Builder, ChannelFlags, ChannelId, ChannelType, CreateButton, CreateChannel, CreateEmbed,
     CreateForumTag, CreateMessage, EditChannel, EditMessage, EditThread, ForumEmoji,
-    PermissionOverwrite, Permissions, ReactionType,
+    PermissionOverwrite, PermissionOverwriteType, Permissions, ReactionType,
 };
 use serenity::builder::CreateForumPost;
 
 use crate::config::config;
-use crate::db::{ActiveCtf, BingoSquare, Challenge, Competition};
+use crate::db::{BingoSquare, Challenge, Competition};
 
 use super::{has_perms, CmdContext, Error};
 
@@ -31,7 +31,7 @@ pub async fn competition(
         .clone();
     let roles = ctx
         .guild()
-        .ok_or(anyhow::anyhow!("Failed to get guild"))?
+        .ok_or(anyhow::anyhow!("Failed to get roles"))?
         .roles
         .clone();
     let everyone = roles
@@ -75,12 +75,12 @@ pub async fn competition(
         // deny access to everyone except officers by default
         .permissions([
             PermissionOverwrite {
-                kind: serenity::all::PermissionOverwriteType::Role(everyone.id),
+                kind: PermissionOverwriteType::Role(everyone.id),
                 allow: Permissions::empty(),
                 deny: Permissions::VIEW_CHANNEL,
             },
             PermissionOverwrite {
-                kind: serenity::all::PermissionOverwriteType::Role(officers.id),
+                kind: PermissionOverwriteType::Role(officers.id),
                 allow: Permissions::VIEW_CHANNEL,
                 deny: Permissions::empty(),
             },
@@ -166,7 +166,6 @@ pub async fn competition(
         None => send_join_message().await,
     }?;
 
-    let join_id = join_message.id;
     join_message
         .edit(ctx, {
             let mut to_send = EditMessage::new();
@@ -189,15 +188,9 @@ pub async fn competition(
         channel_id: forum.id,
         name: name.clone(),
         bingo: BingoSquare::Free.into(),
+        active: true,
     };
     conn.create_competition(competition).await?;
-
-    conn.create_active_ctf(ActiveCtf {
-        join_id,
-        channel_id: forum.id,
-        name: name.clone(),
-    })
-    .await?;
 
     conn.commit().await?;
 

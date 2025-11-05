@@ -1,4 +1,4 @@
-use serenity::all::{CreateButton, EditChannel, EditMessage};
+use serenity::all::{CreateButton, EditChannel, EditMessage, PermissionOverwriteType};
 
 use crate::commands::competition::get_competition_from_ctx;
 use crate::commands::{has_perms, CmdContext, Error};
@@ -59,6 +59,18 @@ pub async fn archive(ctx: CmdContext<'_>) -> Result<(), Error> {
             })
             .await?;
     }
+
+    // Remove viewing restrictions
+    let roles = &ctx
+        .guild()
+        .ok_or(anyhow::anyhow!("Failed to get roles"))?
+        .roles
+        .clone();
+    let everyone = roles
+        .values()
+        .find(|role| role.name == "@everyone")
+        .ok_or(anyhow::anyhow!("\\@everyone role not found"))?;
+    channel.delete_permission(ctx, PermissionOverwriteType::Role(everyone.id)).await?;
 
     // Move the channel to the archived category.
     channel

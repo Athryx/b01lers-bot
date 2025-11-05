@@ -71,6 +71,7 @@ pub struct CompetitionRaw {
     pub channel_id: i64,
     pub name: String,
     pub bingo: i64,
+    pub active: i64,
 }
 
 impl From<Competition> for CompetitionRaw {
@@ -79,6 +80,7 @@ impl From<Competition> for CompetitionRaw {
             channel_id: value.channel_id.get() as i64,
             name: value.name,
             bingo: value.bingo.bits().into(),
+            active: value.active as i64,
         }
     }
 }
@@ -88,6 +90,7 @@ pub struct Competition {
     pub channel_id: ChannelId,
     pub name: String,
     pub bingo: BitFlags<BingoSquare>,
+    pub active: bool,
 }
 
 impl From<CompetitionRaw> for Competition {
@@ -96,6 +99,7 @@ impl From<CompetitionRaw> for Competition {
             channel_id: ChannelId::new(value.channel_id as u64),
             name: value.name,
             bingo: BitFlags::from_bits_truncate(value.bingo as u32),
+            active: value.active != 0,
         }
     }
 }
