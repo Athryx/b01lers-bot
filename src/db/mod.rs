@@ -111,10 +111,11 @@ impl DbConn {
     ) -> Result<(), anyhow::Error> {
         let competition_raw: CompetitionRaw = competition.into();
         sqlx::query!(
-            "INSERT INTO competition (channel_id, name, bingo) VALUES (?, ?, ?)",
+            "INSERT INTO competition (channel_id, name, bingo, active) VALUES (?, ?, ?, ?)",
             competition_raw.channel_id,
             competition_raw.name,
-            competition_raw.bingo
+            competition_raw.bingo,
+            competition_raw.active,
         )
         .execute(self.connection())
         .await?;

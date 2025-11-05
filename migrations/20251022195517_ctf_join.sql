@@ -11,7 +11,7 @@ CREATE TEMPORARY TABLE competition_backup (
     PRIMARY KEY(channel_id)
 );
 
-INSERT INTO competition_backup SELECT *, 0 FROM competition;
+INSERT INTO competition_backup(channel_id, name, bingo, active) SELECT channel_id, name, bingo, 0 FROM competition;
 
 DROP TABLE competition;
 CREATE TABLE competition (
