@@ -1,32 +1,5 @@
--- Add an "active" column to the competition table
-CREATE TEMPORARY TABLE competition_backup (
-    -- Id of the competition channel
-    channel_id INT NOT NULL,
-    -- Name of the ctf
-    name TEXT NOT NULL,
-    -- bitfield specifying which of the bad ctf bingos have been achieved
-    bingo INT NOT NULL,
-    -- boolean specifying whether the competition is currently active
-    active INT NOT NULL,
-    PRIMARY KEY(channel_id)
-);
-
-INSERT INTO competition_backup(channel_id, name, bingo, active) SELECT channel_id, name, bingo, 0 FROM competition;
-
-DROP TABLE competition;
-CREATE TABLE competition (
-    -- Id of the competition channel
-    channel_id INT NOT NULL,
-    -- Name of the ctf
-    name TEXT NOT NULL,
-    -- bitfield specifying which of the bad ctf bingos have been achieved
-    bingo INT NOT NULL,
-    -- boolean specifying whether the competition is currently active
-    active INT NOT NULL,
-    PRIMARY KEY(channel_id)
-);
-
-INSERT INTO competition SELECT * from competition_backup;
+ALTER TABLE competition ADD COLUMN active INT;
+UPDATE competition SET active = 0;
 
 CREATE TABLE active_ctf_members (
     -- Channel ID of CTF
