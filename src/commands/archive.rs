@@ -1,7 +1,6 @@
 use serenity::all::{
     CreateActionRow, CreateButton, EditChannel, EditMessage, PermissionOverwriteType,
 };
-use tracing::info;
 
 use crate::commands::competition::get_competition_from_ctx;
 use crate::commands::{has_perms, CmdContext, Error};
