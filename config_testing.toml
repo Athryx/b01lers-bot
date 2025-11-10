@@ -7,6 +7,7 @@ guild_id = 1073454690081181716
 
 ctf_category_id = 1277386385002594304
 archived_ctf_category_id = 1277386436164845639
+ctf_join_channel = 1430718180979904695
 solve_approvals_channel_id = 1277386525205725306
 bot_log_channel = 1277386853460476048
 rank_up_channel = 1277386889149808662

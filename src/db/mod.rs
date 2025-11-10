@@ -99,6 +99,7 @@ impl DbConn {
         Ok(())
     }
 
+    #[expect(unused)]
     pub async fn rollback(mut self) -> Result<(), anyhow::Error> {
         <Sqlite as sqlx::Database>::TransactionManager::rollback(self.connection()).await?;
         Ok(())
@@ -110,10 +111,11 @@ impl DbConn {
     ) -> Result<(), anyhow::Error> {
         let competition_raw: CompetitionRaw = competition.into();
         sqlx::query!(
-            "INSERT INTO competition (channel_id, name, bingo) VALUES (?, ?, ?)",
+            "INSERT INTO competition (channel_id, name, bingo, active) VALUES (?, ?, ?, ?)",
             competition_raw.channel_id,
             competition_raw.name,
-            competition_raw.bingo
+            competition_raw.bingo,
+            competition_raw.active,
         )
         .execute(self.connection())
         .await?;
@@ -235,7 +237,7 @@ impl DbConn {
             "SELECT * FROM users ORDER BY points DESC LIMIT ?",
             count,
         )
-        .map(|user| User::from(user))
+        .map(User::from)
         .fetch_all(self.connection())
         .await?)
     }
@@ -350,7 +352,7 @@ impl DbConn {
             id,
             ApprovalStatus::Approved as i64,
         )
-        .map(|solve| Challenge::from(solve))
+        .map(Challenge::from)
         .fetch_all(self.connection())
         .await?;
 
@@ -392,6 +394,46 @@ impl DbConn {
         .await?;
 
         Ok(result)
+    }
+
+    pub async fn get_active_ctfs(&mut self) -> anyhow::Result<Vec<Competition>> {
+        let active_raw = sqlx::query_as!(
+            CompetitionRaw,
+            "SELECT * FROM competition WHERE active != 0"
+        )
+        .fetch_all(self.connection())
+        .await?;
+        let active = active_raw.into_iter().map(|comp| comp.into()).collect();
+        Ok(active)
+    }
+
+    pub async fn remove_active_ctf(&mut self, channel: ChannelId) -> anyhow::Result<()> {
+        let channel_id = channel.get() as i64;
+        sqlx::query!(
+            "UPDATE competition SET active = 0 WHERE channel_id = ?",
+            channel_id
+        )
+        .execute(self.connection())
+        .await?;
+        Ok(())
+    }
+
+    pub async fn add_ctf_participant(
+        &mut self,
+        member_id: UserId,
+        ctf_channel: ChannelId,
+    ) -> Result<(), anyhow::Error> {
+        let member_id = member_id.get() as i64;
+        let ctf_channel_id = ctf_channel.get() as i64;
+        sqlx::query!(
+            "INSERT OR IGNORE INTO active_ctf_members (channel_id, member_id) VALUES (?, ?)",
+            member_id,
+            ctf_channel_id
+        )
+        .execute(self.connection())
+        .await?;
+
+        Ok(())
     }
 }
 

@@ -24,6 +24,7 @@ pub struct ServerConfig {
     pub ctf_category_id: ChannelId,
     pub archived_ctf_category_id: ChannelId,
     pub solve_approvals_channel_id: ChannelId,
+    pub ctf_join_channel: ChannelId,
     pub bot_log_channel: ChannelId,
     pub rank_up_channel: ChannelId,
     pub officer_role: String,
@@ -54,7 +55,7 @@ pub async fn load_config(path: &Path) -> anyhow::Result<()> {
     let config = toml::from_str(&config_data)?;
     CONFIG
         .set(config)
-        .or_else(|_| Err(anyhow::anyhow!("config already loaded")))?;
+        .map_err(|_| anyhow::anyhow!("config already loaded"))?;
 
     Ok(())
 }

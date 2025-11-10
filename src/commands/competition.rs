@@ -1,7 +1,10 @@
+use std::collections::HashSet;
+
 use anyhow::Context;
 use serenity::all::{
-    Builder, ChannelFlags, ChannelId, ChannelType, CreateChannel, CreateEmbed, CreateForumTag,
-    CreateMessage, EditChannel, EditThread, ForumEmoji, ReactionType,
+    Builder, ChannelFlags, ChannelId, ChannelType, CreateButton, CreateChannel, CreateEmbed,
+    CreateForumTag, CreateMessage, EditChannel, EditMessage, EditThread, ForumEmoji,
+    PermissionOverwrite, PermissionOverwriteType, Permissions, ReactionType,
 };
 use serenity::builder::CreateForumPost;
 
@@ -20,7 +23,35 @@ pub async fn competition(
     #[description = "Team username"] username: String,
     #[description = "Team password or login url"] password: String,
 ) -> Result<(), Error> {
-    // TODO: figure out how to get all channels in a category, so we can check duplicate names
+    let ctf_category_id = config().server.ctf_category_id;
+    let channels = ctx
+        .guild()
+        .ok_or(anyhow::anyhow!("Failed to get guild"))?
+        .channels
+        .clone();
+    let roles = ctx
+        .guild()
+        .ok_or(anyhow::anyhow!("Failed to get roles"))?
+        .roles
+        .clone();
+    let everyone = roles
+        .values()
+        .find(|role| role.name == "@everyone")
+        .ok_or(anyhow::anyhow!("\\@everyone role not found"))?;
+    let officers = roles
+        .values()
+        .find(|role| role.name == config().server.officer_role)
+        .ok_or(anyhow::anyhow!("officer role not found"))?;
+
+    let live_ctfs: HashSet<ChannelId> = channels
+        .keys()
+        .filter(|id| channels[id].parent_id == Some(ctf_category_id))
+        .copied()
+        .collect();
+
+    if live_ctfs.iter().any(|ctf| channels[ctf].name == name) {
+        return Err(anyhow::anyhow!("CTF channel already exists"));
+    }
 
     // Defer response because channel setup may take longer than 3 seconds
     ctx.defer().await?;
@@ -45,11 +76,24 @@ pub async fn competition(
     let creds_str =
         &format!("**{name}**\n{url}\n\n**Username**: {username_esc}\n**Password**: {password_esc}");
     let mut forum = CreateChannel::new(&name)
-        .category(config().server.ctf_category_id)
-        .position(0)
+        .category(ctf_category_id)
+        .position(1)
         .kind(ChannelType::Forum)
         .default_reaction_emoji(ForumEmoji::Id(config().server.ctf_default_emoji_id))
         .topic(creds_str) // Post guidelines for forum channel
+        // deny access to everyone except officers by default
+        .permissions([
+            PermissionOverwrite {
+                kind: PermissionOverwriteType::Role(everyone.id),
+                allow: Permissions::empty(),
+                deny: Permissions::VIEW_CHANNEL,
+            },
+            PermissionOverwrite {
+                kind: PermissionOverwriteType::Role(officers.id),
+                allow: Permissions::VIEW_CHANNEL,
+                deny: Permissions::empty(),
+            },
+        ])
         .execute(ctx, config().server.guild_id)
         .await?;
 
@@ -102,12 +146,58 @@ pub async fn competition(
         creds_message.pin(ctx).await?;
     }
 
+    let join_channel = &channels[&config().server.ctf_join_channel];
+    let active = ctx.data().conn().await.get_active_ctfs().await?;
+    let send_join_message = async || -> Result<_, anyhow::Error> {
+        join_channel
+            .send_message(ctx, {
+                let mut to_send = CreateMessage::new().content("Join an active ctf:");
+                for ctf in &active {
+                    to_send = to_send.button(
+                        CreateButton::new(format!("{}", &ctf.channel_id))
+                            .label(format!("Play in {}", &ctf.name)),
+                    );
+                }
+                to_send
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!(e))
+    };
+
+    let mut join_message = match join_channel.last_message_id {
+        Some(id) => {
+            let msg = join_channel.message(ctx, id).await;
+            match msg {
+                Ok(msg) => Ok(msg),
+                Err(_) => send_join_message().await,
+            }
+        }
+        None => send_join_message().await,
+    }?;
+
+    join_message
+        .edit(ctx, {
+            let mut to_send = EditMessage::new();
+            for ctf in &active {
+                to_send = to_send.button(
+                    CreateButton::new(ctf.channel_id.to_string())
+                        .label(format!("Play in {}", &ctf.name)),
+                );
+            }
+            to_send = to_send.button(
+                CreateButton::new(format!("{}", &forum.id)).label(format!("Play in {}", &name)),
+            );
+            to_send
+        })
+        .await?;
+
     let mut conn = ctx.data().conn().await;
 
     let competition = Competition {
         channel_id: forum.id,
         name: name.clone(),
         bingo: BingoSquare::Free.into(),
+        active: true,
     };
     conn.create_competition(competition).await?;
 

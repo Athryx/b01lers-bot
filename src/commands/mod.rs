@@ -69,7 +69,7 @@ pub async fn is_officer(ctx: &Context, member: &Member) -> bool {
             Some(role) => role.name == config().server.officer_role,
             None => false,
         })
-        .fold(false, |a, b| a || b)
+        .any(|b| b)
 }
 
 pub async fn has_perms(ctx: &CmdContext<'_>) -> bool {
@@ -98,6 +98,7 @@ pub async fn role_id_for_role_name(
     Ok(None)
 }
 
+#[expect(unused)]
 pub async fn user_has_role(ctx: &Context, user: &User, role_name: &str) -> anyhow::Result<bool> {
     let Some(role_id) = role_id_for_role_name(ctx, role_name).await? else {
         // role does not exist, so user does not have role

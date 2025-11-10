@@ -232,7 +232,7 @@ pub async fn handle_approval_button(
             message
                 .reply(
                     context,
-                    format!("solve is alredy {}", solve.approval_status),
+                    format!("solve is already {}", solve.approval_status),
                 )
                 .await?;
         } else if interaction.data.custom_id == "accept" {
