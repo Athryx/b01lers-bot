@@ -1,5 +1,4 @@
-ALTER TABLE competition ADD COLUMN active INT;
-UPDATE competition SET active = 0;
+ALTER TABLE competition ADD COLUMN active INT NOT NULL DEFAULT 0;
 
 CREATE TABLE active_ctf_members (
     -- Channel ID of CTF
