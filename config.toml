@@ -6,7 +6,7 @@ email_address = "Purdue Capture The Flag Team <b01lers@b01lers.com>"
 guild_id = 511675552386777099
 
 ctf_category_id = 534524532799569950
-archived_ctf_category_id = 1339027348573524050
+archived_ctf_category_id = 1437541223026921665
 ctf_join_channel = 1437529898964095131
 solve_approvals_channel_id = 757358907034435686
 bot_log_channel = 743238600329658459
