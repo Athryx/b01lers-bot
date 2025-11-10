@@ -1,4 +1,7 @@
-use serenity::all::{CreateButton, EditChannel, EditMessage, PermissionOverwriteType};
+use serenity::all::{
+    CreateActionRow, CreateButton, EditChannel, EditMessage, PermissionOverwriteType,
+};
+use tracing::info;
 
 use crate::commands::competition::get_competition_from_ctx;
 use crate::commands::{has_perms, CmdContext, Error};
@@ -44,19 +47,23 @@ pub async fn archive(ctx: CmdContext<'_>) -> Result<(), Error> {
     let active = ctx.data().conn().await.get_active_ctfs().await?;
     if let Some(join_message_id) = join_channel.guild().and_then(|guild| guild.last_message_id) {
         let mut join_message = join_channel_id.message(ctx, join_message_id).await?;
-        join_message
-            .edit(ctx, {
-                let mut to_send = EditMessage::new();
-                for ctf in &active {
-                    if ctf.channel_id != competition.channel_id {
-                        to_send = to_send.button(
-                            CreateButton::new(ctf.channel_id.to_string())
-                                .label(format!("Play in {}", &ctf.name)),
-                        );
-                    }
-                }
-                to_send
+        let buttons: Vec<CreateButton> = active
+            .iter()
+            .filter(|ctf| ctf.channel_id != competition.channel_id)
+            .map(|ctf| {
+                CreateButton::new(ctf.channel_id.to_string())
+                    .label(format!("Play in {}", &ctf.name))
             })
+            .collect();
+        join_message
+            .edit(
+                ctx,
+                EditMessage::new().components(if buttons.is_empty() {
+                    Vec::new()
+                } else {
+                    vec![CreateActionRow::Buttons(buttons)]
+                }),
+            )
             .await?;
     }
 
@@ -70,7 +77,9 @@ pub async fn archive(ctx: CmdContext<'_>) -> Result<(), Error> {
         .values()
         .find(|role| role.name == "@everyone")
         .ok_or(anyhow::anyhow!("\\@everyone role not found"))?;
-    channel.delete_permission(ctx, PermissionOverwriteType::Role(everyone.id)).await?;
+    channel
+        .delete_permission(ctx, PermissionOverwriteType::Role(everyone.id))
+        .await?;
 
     // Move the channel to the archived category.
     channel
