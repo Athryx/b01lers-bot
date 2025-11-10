@@ -1,7 +1,6 @@
 use serenity::all::{
     CreateActionRow, CreateButton, EditChannel, EditMessage, PermissionOverwriteType,
 };
-use tracing::info;
 
 use crate::commands::competition::get_competition_from_ctx;
 use crate::commands::{has_perms, CmdContext, Error};
@@ -61,7 +60,10 @@ pub async fn archive(ctx: CmdContext<'_>) -> Result<(), Error> {
                 EditMessage::new().components(if buttons.is_empty() {
                     Vec::new()
                 } else {
-                    vec![CreateActionRow::Buttons(buttons)]
+                    buttons
+                        .chunks(5)
+                        .map(|b| CreateActionRow::Buttons(b.to_vec()))
+                        .collect()
                 }),
             )
             .await?;
