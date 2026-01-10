@@ -63,10 +63,11 @@ pub async fn email(
 
     let token_base64 = BASE64_STANDARD.encode(token);
 
+    let email_text = config().mailgun.verify_email_template.replace("{token}", &token_base64);
     ctx.data().email_client.send_email(
         &email,
-        "b01lers verification",
-        &format!("Your verication token is: `{token_base64}`.<br>Use `/verify token token:{token_base64}` with the b01lers-bot to verify yourself."),
+        &config().mailgun.verify_email_title,
+        &email_text,
     ).await?;
 
     ctx.say("Verification token has been sent to your purdue email")

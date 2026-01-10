@@ -15,6 +15,8 @@ pub struct Config {
 pub struct MailgunConfig {
     pub api_base_url: String,
     pub email_address: String,
+    pub verify_email_title: String,
+    pub verify_email_template: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

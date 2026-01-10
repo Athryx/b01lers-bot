@@ -1,6 +1,97 @@
 [mailgun]
 api_base_url = "https://api.mailgun.net/v3/email.b01lers.com"
 email_address = "Purdue Capture The Flag Team <b01lers@b01lers.com>"
+verify_email_title = "b01lers discord verification"
+verify_email_template = """
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>b01lers Discord Verification</title>
+  <style>
+    /* Reset */
+    body,table,td{margin:0;padding:0;border:0;font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;}
+    img{border:0;display:block;max-width:100%;height:auto}
+
+    /* Container */
+    .email-wrapper{width:100%;background:#000000;padding:32px 16px}
+    .email-body{max-width:680px;margin:0 auto;background:#0b0b0b;border-radius:12px;overflow:hidden;border:1px solid rgba(235,43,43,0.06)}
+
+    /* Header */
+    .header{padding:28px 32px 18px;text-align:center}
+    .logo{display:inline-block}
+    .brand{color:#ffffff;font-size:18px;font-weight:700;margin-top:12px}
+
+    /* Content */
+    .content{padding:20px 32px 32px;color:#e8e8e8;line-height:1.5}
+    h1{color:#ffffff;margin:0 0 10px;font-size:20px}
+    p{margin:0 0 12px}
+
+    /* Accent button */
+    .cta{display:inline-block;background:#eb2b2b;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600}
+
+    /* Token block */
+    .token-wrap{margin:18px 0}
+    .token{background:linear-gradient(180deg, rgba(235,43,43,0.06), rgba(235,43,43,0.03));border:1px solid rgba(235,43,43,0.12);padding:14px;border-radius:8px;font-family:mono, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;color:#ffffff;word-break:break-all}
+    .token small{display:block;color:#cfcfcf;font-size:12px;margin-bottom:8px}
+
+    /* Command instruction */
+    .command{background:#0a0a0a;border:1px dashed rgba(235,43,43,0.18);padding:14px;border-radius:8px;color:#e8e8e8;font-family:mono, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace}
+
+    /* Footer */
+    .footer{padding:16px 32px 28px;font-size:12px;color:#9b9b9b;text-align:center}
+
+    /* Responsive */
+    @media (max-width:480px){
+      .email-body{border-radius:8px}
+      .header{padding:20px}
+      .content{padding:18px}
+      .footer{padding:12px}
+    }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td>
+          <div class="email-body">
+
+            <!-- Header / Logo -->
+            <div class="header">
+              <!-- Replace the href and src with your actual server link and logo image URL -->
+              <a class="logo" href="https://b01lers.com" target="_blank" rel="noopener noreferrer">
+                <img src="https://pbs.twimg.com/profile_images/568451513295441921/9Hm60msK_400x400.png" alt="b01lers logo" width="128" style="display:block;margin:0 auto;" />
+              </a>
+              <div class="brand">b01lers Discord Verification</div>
+            </div>
+
+            <!-- Content -->
+            <div class="content">
+              <h1>Verify your b01lers account</h1>
+              <p>Thanks for joining the b01lers Discord. To complete verification, please use the verification token below with the verify token command in Discord.</p>
+
+              <div class="token-wrap">
+                <div class="token">
+                  <small>Your verification token</small>
+                  {token}
+                </div>
+              </div>
+
+              <p>Run this command in the b01lers Discord (copy exactly):</p>
+
+              <div class="command">/verify token token:{token}</div>
+            </div>
+
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>
+"""
 
 [server]
 guild_id = 1073454690081181716
