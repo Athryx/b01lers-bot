@@ -18,7 +18,7 @@ use serenity::all::{
 use std::{env, path::PathBuf};
 use tracing::{error, info};
 
-use commands::CommandContext;
+use commands::{CommandContext, restore_user_roles};
 use config::config;
 use db::DbContext;
 
@@ -69,6 +69,19 @@ fn event_handler<'a>(
                     let message = CreateMessage::new().content(&config().server.join_dm_message);
 
                     new_member.user.direct_message(context, message).await?;
+
+                    if let Ok(user_info) = user_data.conn().await.get_user_by_id(new_member.user.id).await {
+                        // give roles if already in server and verified before
+                        let roles = restore_user_roles(context, &user_info).await?;
+                        if roles.len() > 0 {
+                            let role_string = roles.join(", ");
+                            let message = CreateMessage::new().content(
+                                &format!("restored previous roles to your account on b01lers server: `{role_string}`"),
+                            );
+
+                            new_member.user.direct_message(context, message).await?;
+                        }
+                    }
                 }
             }
             _ => (),

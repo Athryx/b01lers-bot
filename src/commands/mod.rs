@@ -169,3 +169,30 @@ pub async fn remove_role_from_user(
 
     Ok(())
 }
+
+/// Gives user roles they already have in case they have lost the roles.
+/// 
+/// Returns a list of roles added to the user, including roles they may have already had.
+pub async fn restore_user_roles(
+    ctx: &Context,
+    user: &crate::db::User,
+) -> anyhow::Result<Vec<String>> {
+    let mut roles_given = Vec::new();
+
+    if user.is_verified() {
+        add_role_to_user(
+            ctx,
+            user.id,
+            &config().server.member_role,
+        )
+        .await?;
+        roles_given.push(config().server.member_role.to_string());
+    }
+
+    if let Some(rank_name) = user.rank.rank_name() {
+        add_role_to_user(ctx, user.id, rank_name).await?;
+        roles_given.push(rank_name.to_string());
+    }
+
+    Ok(roles_given)
+}
