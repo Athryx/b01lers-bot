@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO users (id, email, points) VALUES (?, NULL, 0)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "d44523331a8235c286ca79328be5bbd4045eb37ce17f31857ad922f3c4e91e46"
+}

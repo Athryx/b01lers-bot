@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE competition SET name = ?, bingo = ? WHERE channel_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "618b7cfeace517c6b139678d1cfaf5f0e518fb735dae87ff51b9ce1ff0914717"
+}

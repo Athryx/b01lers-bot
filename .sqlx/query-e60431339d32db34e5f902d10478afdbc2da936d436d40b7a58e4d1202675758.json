@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT * FROM solves WHERE approval_message_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "challenge_id",
+        "ordinal": 1,
+        "type_info": "Int64"
+      },
+      {
+        "name": "approval_message_id",
+        "ordinal": 2,
+        "type_info": "Int64"
+      },
+      {
+        "name": "flag",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "approval_status",
+        "ordinal": 4,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e60431339d32db34e5f902d10478afdbc2da936d436d40b7a58e4d1202675758"
+}

@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users SET points = points + ? WHERE id = ? RETURNING id, points, rank",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "points",
+        "ordinal": 1,
+        "type_info": "Int64"
+      },
+      {
+        "name": "rank",
+        "ordinal": 2,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "9b9d65bc1daba7d6ab61d78affef253d57ddcd109026888f455c2c9392a8248a"
+}

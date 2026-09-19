@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE solves SET flag = ?, approval_status = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "abccd3a8ea2214bf6bc2ce3720549aa20baa716a815a5dfd6d5617e87811faa4"
+}

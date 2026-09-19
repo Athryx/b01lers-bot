@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR IGNORE INTO active_ctf_members (channel_id, member_id) VALUES (?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "f0e1d8d130fed9418e1d7de680893477e77b3df4adf5c412a5ccb5ebf1fdf281"
+}

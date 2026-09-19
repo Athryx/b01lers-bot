@@ -1,0 +1,20 @@
+name: b01lers-bot
+services:
+  b01lers-bot:
+    container_name: b01lers-bot
+    build:
+      dockerfile: Dockerfile
+      context: .
+    restart: always
+    # logging is just used similar to challenge docker-compose
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50k"
+        max-file: 3
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - MAILGUN_TOKEN=${MAILGUN_TOKEN}
+      - DATABASE_URL=sqlite:///bot_db/db.sqlite
+    volumes:
+      - ./bot_db:/bot_db

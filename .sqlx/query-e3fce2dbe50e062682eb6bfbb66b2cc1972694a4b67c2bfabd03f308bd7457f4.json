@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE competition SET active = 0 WHERE channel_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "e3fce2dbe50e062682eb6bfbb66b2cc1972694a4b67c2bfabd03f308bd7457f4"
+}

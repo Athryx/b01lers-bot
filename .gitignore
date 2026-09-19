@@ -1,4 +1,5 @@
 /target
+/bot_db
 .env
 db.sqlite
 db.sqlite-shm

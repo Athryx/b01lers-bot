@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO solves (challenge_id, approval_message_id, flag, approval_status)\n            VALUES (?, ?, ?, ?) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0e2889098f32350948869eda39c8ea8ea26787b2e5a3801c993112bc97dfe9e3"
+}

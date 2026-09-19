@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users SET points = points + ? WHERE id IN\n            (SELECT user_id FROM user_solves WHERE solve_id = ?)\n            RETURNING id, points, rank",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "points",
+        "ordinal": 1,
+        "type_info": "Int64"
+      },
+      {
+        "name": "rank",
+        "ordinal": 2,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "a00bfdd865baea38377f19e51d48f31b8a274fb0ceb8388b37bf01e78a911ba0"
+}
