@@ -38,10 +38,6 @@ pub async fn competition(
         .values()
         .find(|role| role.name == "@everyone")
         .ok_or(anyhow::anyhow!("\\@everyone role not found"))?;
-    let officers = roles
-        .values()
-        .find(|role| role.name == config().server.officer_role)
-        .ok_or(anyhow::anyhow!("officer role not found"))?;
 
     let live_ctfs: HashSet<ChannelId> = channels
         .keys()
@@ -81,19 +77,12 @@ pub async fn competition(
         .kind(ChannelType::Forum)
         .default_reaction_emoji(ForumEmoji::Id(config().server.ctf_default_emoji_id))
         .topic(creds_str) // Post guidelines for forum channel
-        // deny access to everyone except officers by default
-        .permissions([
-            PermissionOverwrite {
-                kind: PermissionOverwriteType::Role(everyone.id),
-                allow: Permissions::empty(),
-                deny: Permissions::VIEW_CHANNEL,
-            },
-            PermissionOverwrite {
-                kind: PermissionOverwriteType::Role(officers.id),
-                allow: Permissions::VIEW_CHANNEL,
-                deny: Permissions::empty(),
-            },
-        ])
+        // deny access to everyone
+        .permissions([PermissionOverwrite {
+            kind: PermissionOverwriteType::Role(everyone.id),
+            allow: Permissions::empty(),
+            deny: Permissions::VIEW_CHANNEL,
+        }])
         .execute(ctx, config().server.guild_id)
         .await?;
 
