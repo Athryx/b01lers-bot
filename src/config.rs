@@ -29,6 +29,7 @@ pub struct ServerConfig {
     pub ctf_join_channel: ChannelId,
     pub bot_log_channel: ChannelId,
     pub rank_up_channel: ChannelId,
+    pub admin_channel: ChannelId,
     pub officer_role: String,
     pub member_role: String,
     pub welcome_message: String,

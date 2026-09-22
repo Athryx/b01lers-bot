@@ -435,6 +435,26 @@ impl DbConn {
 
         Ok(())
     }
+
+    pub async fn get_ctf_participants(
+        &mut self,
+        ctf_channel: ChannelId,
+    ) -> anyhow::Result<Vec<User>> {
+        let ctf_channel_id = ctf_channel.get() as i64;
+        // FIXME: active_ctf_members.member_id stores channel id from earlier, to lazy to make migration
+        let result = sqlx::query_as!(
+            UserRaw,
+            "SELECT users.* FROM active_ctf_members
+            INNER JOIN users ON users.id == active_ctf_members.channel_id
+            WHERE active_ctf_members.member_id == ?",
+            ctf_channel_id,
+        )
+        .map(User::from)
+        .fetch_all(self.connection())
+        .await?;
+
+        Ok(result)
+    }
 }
 
 impl Drop for DbConn {

@@ -102,13 +102,14 @@ ctf_join_channel = 1437529898964095131
 solve_approvals_channel_id = 757358907034435686
 bot_log_channel = 743238600329658459
 rank_up_channel = 879945978512277514
+admin_channel = 511676048572809228
 
 officer_role = "officer"
 member_role = "members"
 
 welcome_message = """
 Welcome to B01lers!
-    
+
 The best way to get started is to come every weekend, play, and ask questions along the way to see what skills you
 need as you play. If you don't know something, learn it while you work or take the next week to learn if you can't
 figure it out!
@@ -121,8 +122,8 @@ We have an internal CTF server for practice too: <https://internal.b01lersc.tf/>
 own past CTFs and bootcamps! Ask questions in #internal-ctf about that and we will help out!
 
 If you're interested in learning certain categories or specific skills, there are a couple good learning resources:
-* Cryptography: <https://cryptohack.org/> 
-* Binary Exploitation: <https://pwn.college/> 
+* Cryptography: <https://cryptohack.org/>
+* Binary Exploitation: <https://pwn.college/>
 * Web: there's no obvious winner here that I know of... :( <https://overthewire.org/wargames/natas/ is okay,
   maybe someone else has a better resource
 

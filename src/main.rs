@@ -18,7 +18,7 @@ use serenity::all::{
 use std::{env, path::PathBuf};
 use tracing::{error, info};
 
-use commands::{CommandContext, restore_user_roles};
+use commands::{restore_user_roles, CommandContext};
 use config::config;
 use db::DbContext;
 
@@ -70,7 +70,12 @@ fn event_handler<'a>(
 
                     new_member.user.direct_message(context, message).await?;
 
-                    if let Ok(user_info) = user_data.conn().await.get_user_by_id(new_member.user.id).await {
+                    if let Ok(user_info) = user_data
+                        .conn()
+                        .await
+                        .get_user_by_id(new_member.user.id)
+                        .await
+                    {
                         // give roles if already in server and verified before
                         let roles = restore_user_roles(context, &user_info).await?;
                         if roles.len() > 0 {
@@ -175,6 +180,7 @@ async fn main() {
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![
+                commands::admin::participants(),
                 commands::competition::competition(),
                 commands::bingo::bingo(),
                 commands::archive::archive(),

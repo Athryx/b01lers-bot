@@ -10,6 +10,7 @@ use crate::{
     email::EmailClient,
 };
 
+pub mod admin;
 pub mod archive;
 pub mod bingo;
 pub mod challenge;
@@ -171,7 +172,7 @@ pub async fn remove_role_from_user(
 }
 
 /// Gives user roles they already have in case they have lost the roles.
-/// 
+///
 /// Returns a list of roles added to the user, including roles they may have already had.
 pub async fn restore_user_roles(
     ctx: &Context,
@@ -180,12 +181,7 @@ pub async fn restore_user_roles(
     let mut roles_given = Vec::new();
 
     if user.is_verified() {
-        add_role_to_user(
-            ctx,
-            user.id,
-            &config().server.member_role,
-        )
-        .await?;
+        add_role_to_user(ctx, user.id, &config().server.member_role).await?;
         roles_given.push(config().server.member_role.to_string());
     }
 
