@@ -1,11 +1,12 @@
 use anyhow::Context;
-use poise::CreateReply;
 use serenity::all::prelude::Mentionable;
 use serenity::all::{ChannelId, CreateEmbed};
 
 use super::has_perms;
+use crate::commands::pagination::send_pagination;
 use crate::commands::{CmdContext, Error};
 use crate::config::config;
+use crate::db::User;
 
 /// Ensures the command with the given `ctx` is run by user with admin permissions in the admin channel
 async fn check_admin_command_perms(ctx: CmdContext<'_>) -> anyhow::Result<()> {
@@ -43,28 +44,29 @@ pub async fn participants(
         .await
         .context("Unable to fetch participants in CTF channel")?;
 
-    let mut user_list = String::new();
+    let render = |_page, users_to_render: &[User]| {
+        let mut user_list = String::new();
 
-    for user in participants {
-        let user_email = user
-            .email
-            .unwrap_or_else(|| "no email available".to_string());
+        for user in users_to_render {
+            let user_email = match user.email.as_ref() {
+                Some(email) => email.as_str(),
+                None => "no email available",
+            };
 
-        user_list.push_str(&format!("{} ({})\n", user.id.mention(), user_email));
-    }
+            user_list.push_str(&format!("{} ({})\n", user.id.mention(), user_email));
+        }
 
-    let embed = CreateEmbed::new()
-        .title("CTF Participants")
-        .description(format!(
-            "Participants who joined CTF `{}`",
-            competition.name
-        ))
-        .color(0xc22026)
-        .field("Participants", user_list, true);
+        CreateEmbed::new()
+            .title("CTF Participants")
+            .description(format!(
+                "Participants who joined CTF `{}`",
+                competition.name
+            ))
+            .color(0xc22026)
+            .field("Participants", user_list, true)
+    };
 
-    let message = CreateReply::default().embed(embed);
-
-    ctx.send(message).await?;
+    send_pagination(ctx, render, &participants, 10).await?;
 
     Ok(())
 }

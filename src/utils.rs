@@ -14,18 +14,20 @@ pub async fn handle_button_interaction(
     let join_id = config().server.ctf_join_channel;
 
     if !matches!(interaction.data.kind, ComponentInteractionDataKind::Button) {
-        return Err(anyhow::anyhow!(
-            "Called handle_button_interaction without a button"
-        ));
+        return Ok(());
     }
     match interaction.channel_id {
-        id if id == approvals_id => {
+        id if id == approvals_id
+            && matches!(interaction.data.custom_id.as_str(), "accept" | "reject") =>
+        {
             crate::commands::solve::handle_approval_button(context, cmd_context, interaction)
                 .await?
         }
 
-        id if id == join_id => handle_ctf_join(context, cmd_context, interaction).await?,
-        _ => return Err(anyhow::anyhow!("Unknown usage of button")),
+        id if id == join_id && interaction.data.custom_id.parse::<u64>().is_ok() => {
+            handle_ctf_join(context, cmd_context, interaction).await?
+        }
+        _ => (),
     }
     Ok(())
 }

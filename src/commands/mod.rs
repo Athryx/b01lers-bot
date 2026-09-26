@@ -15,6 +15,7 @@ pub mod bingo;
 pub mod challenge;
 pub mod competition;
 pub mod misc;
+mod pagination;
 pub mod solve;
 pub mod stats;
 pub mod verify;

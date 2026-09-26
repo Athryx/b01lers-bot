@@ -399,19 +399,6 @@ fn render_credentials_embed(competition: &Competition) -> Result<CreateEmbed, Er
     Ok(out)
 }
 
-// /// Creates a new ctf competition channel.
-// #[poise::command(slash_command)]
-// pub async fn competition(
-//     ctx: CmdContext<'_>,
-//     #[description = "Name of the ctf"] name: String,
-//     #[description = "Url of ctf website"] url: String,
-//     //#[description = "Description of the ctf"] description: Option<String>,
-//     #[description = "Team username"] username: String,
-//     #[description = "Team password"] password: String,
-// ) -> Result<(), Error> {
-
-// }
-
 pub async fn get_competition_id_from_ctx(ctx: &CmdContext<'_>) -> Result<ChannelId, Error> {
     let Some(thread_channel) = ctx.guild_channel().await else {
         Err(anyhow::anyhow!("You are not inside a competition channel."))?
