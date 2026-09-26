@@ -53,7 +53,7 @@ pub async fn user(
     let stats_embed = CreateEmbed::new()
         .title("CTF Solve Stats")
         .description(format!(
-            "Number of challenges {} has solved in each catagory",
+            "Points, rank, and challenges solved for {}",
             user_id.mention()
         ))
         .color(0xc22026)
@@ -119,24 +119,13 @@ pub async fn leaderboard(ctx: CmdContext<'_>) -> Result<(), Error> {
 
 /// Lists your points and the point requirements of other ranks
 #[poise::command(slash_command)]
-pub async fn rank(
-    ctx: CmdContext<'_>,
-    #[description = "User to list stats for (empty to list your own stats)"] user: Option<UserId>,
-) -> Result<(), Error> {
-    let user_id = match user {
-        Some(user_id) => user_id,
-        None => ctx.author().id,
-    };
-
+pub async fn rank(ctx: CmdContext<'_>) -> Result<(), Error> {
     let mut conn = ctx.data().conn().await;
-
-    let user = conn.get_user_by_id(user_id).await?;
 
     let mut embed = CreateEmbed::new()
         .title("Server Rank")
         .description("Points can be earned through participation in the server, like sending messages or solving CTF challenges.")
-        .color(0xc22026)
-        .field("Point Total", points_to_string(user.points), true);
+        .color(0xc22026);
 
     let cutoffs = get_point_cutoffs(&mut conn).await?;
     let rank_names = &config().ranks.rank_names;
