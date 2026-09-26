@@ -22,6 +22,46 @@
         "name": "active",
         "ordinal": 3,
         "type_info": "Int64"
+      },
+      {
+        "name": "ai_allowed",
+        "ordinal": 4,
+        "type_info": "Int64"
+      },
+      {
+        "name": "url",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "creds_channel_id",
+        "ordinal": 6,
+        "type_info": "Int64"
+      },
+      {
+        "name": "creds_message_id",
+        "ordinal": 7,
+        "type_info": "Int64"
+      },
+      {
+        "name": "username",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "password",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "token",
+        "ordinal": 11,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -31,7 +71,15 @@
       false,
       false,
       false,
-      false
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
     ]
   },
   "hash": "3defd43980b24b21f8a3beee7364092bcb2c58b2a00b4661bad6c048a152912a"

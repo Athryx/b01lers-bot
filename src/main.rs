@@ -183,7 +183,6 @@ async fn main() {
                 commands::admin::participants(),
                 commands::competition::competition(),
                 commands::bingo::bingo(),
-                commands::archive::archive(),
                 commands::challenge::challenge(),
                 commands::solve::solve(),
                 commands::solve::quick_solve(),

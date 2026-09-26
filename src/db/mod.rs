@@ -111,11 +111,19 @@ impl DbConn {
     ) -> Result<(), anyhow::Error> {
         let competition_raw: CompetitionRaw = competition.into();
         sqlx::query!(
-            "INSERT INTO competition (channel_id, name, bingo, active) VALUES (?, ?, ?, ?)",
+            "INSERT INTO competition (channel_id, name, bingo, active, ai_allowed, url, creds_channel_id, creds_message_id, username, email, password, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             competition_raw.channel_id,
             competition_raw.name,
             competition_raw.bingo,
             competition_raw.active,
+            competition_raw.ai_allowed,
+            competition_raw.url,
+            competition_raw.creds_channel_id,
+            competition_raw.creds_message_id,
+            competition_raw.username,
+            competition_raw.email,
+            competition_raw.password,
+            competition_raw.token,
         )
         .execute(self.connection())
         .await?;
@@ -145,9 +153,12 @@ impl DbConn {
     ) -> Result<(), anyhow::Error> {
         let competition_raw: CompetitionRaw = competition.into();
         sqlx::query!(
-            "UPDATE competition SET name = ?, bingo = ? WHERE channel_id = ?",
-            competition_raw.name,
+            "UPDATE competition SET bingo = ?, username = ?, email = ?, password = ?, token = ? WHERE channel_id = ?",
             competition_raw.bingo,
+            competition_raw.username,
+            competition_raw.email,
+            competition_raw.password,
+            competition_raw.token,
             competition_raw.channel_id,
         )
         .execute(self.connection())

@@ -11,7 +11,6 @@ use crate::{
 };
 
 pub mod admin;
-pub mod archive;
 pub mod bingo;
 pub mod challenge;
 pub mod competition;

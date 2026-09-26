@@ -2,9 +2,9 @@ use std::collections::HashSet;
 
 use anyhow::Context;
 use serenity::all::{
-    Builder, ChannelFlags, ChannelId, ChannelType, CreateButton, CreateChannel, CreateEmbed,
-    CreateForumTag, CreateMessage, EditChannel, EditMessage, EditThread, ForumEmoji,
-    PermissionOverwrite, PermissionOverwriteType, Permissions, ReactionType,
+    Builder, ChannelFlags, ChannelId, ChannelType, CreateActionRow, CreateButton, CreateChannel,
+    CreateEmbed, CreateForumTag, CreateMessage, EditChannel, EditMessage, EditThread, ForumEmoji,
+    MessageId, PermissionOverwrite, PermissionOverwriteType, Permissions, ReactionType,
 };
 use serenity::builder::CreateForumPost;
 
@@ -13,15 +13,22 @@ use crate::db::{BingoSquare, Challenge, Competition};
 
 use super::{has_perms, CmdContext, Error};
 
+#[poise::command(slash_command, subcommands("new", "edit", "archive"))]
+pub async fn competition(_ctx: CmdContext<'_>) -> anyhow::Result<()> {
+    Ok(())
+}
+
 /// Creates a new ctf competition channel.
 #[poise::command(slash_command)]
-pub async fn competition(
+pub async fn new(
     ctx: CmdContext<'_>,
     #[description = "Name of the ctf"] name: String,
-    #[description = "Url of ctf website"] url: String,
-    //#[description = "Description of the ctf"] description: Option<String>,
-    #[description = "Team username"] username: String,
-    #[description = "Team password or login url"] password: String,
+    #[description = "Ctf website URL"] url: String,
+    #[description = "Is AI allowed?"] ai_allowed: bool,
+    #[description = "Team username"] username: Option<String>,
+    #[description = "Team email"] email: Option<String>,
+    #[description = "Team password"] password: Option<String>,
+    #[description = "Team token or login URL"] token: Option<String>,
 ) -> Result<(), Error> {
     let ctf_category_id = config().server.ctf_category_id;
     let channels = ctx
@@ -58,25 +65,33 @@ pub async fn competition(
         ));
     }
 
-    if username.contains("`") {
-        return Err(anyhow::anyhow!("Username cannot include a backtick (\\`)"));
-    }
+    // default ids until we make them later, need competition for rendering
+    let mut competition = Competition {
+        channel_id: ChannelId::default(),
+        name: name.clone(),
+        bingo: BingoSquare::Free.into(),
+        active: true,
+        ai_allowed: ai_allowed,
+        url: url,
+        creds_channel_id: ChannelId::default(),
+        creds_message_id: MessageId::default(),
+        username: username,
+        email: email,
+        token: token,
+        password: password,
+    };
 
-    if password.contains("`") {
-        return Err(anyhow::anyhow!("Password cannot include a backtick (\\`)"));
-    }
-    let username_esc = format!("`{username}`");
-    let password_esc = format!("`{password}`");
+    let forum_topic = render_forum_topic(&competition)?;
+    let credentials_embed = render_credentials_embed(&competition)?;
+
     // TODO: prettier error
     // Create forum channel
-    let creds_str =
-        &format!("**{name}**\n{url}\n\n**Username**: {username_esc}\n**Password**: {password_esc}");
     let mut forum = CreateChannel::new(&name)
         .category(ctf_category_id)
         .position(1)
         .kind(ChannelType::Forum)
         .default_reaction_emoji(ForumEmoji::Id(config().server.ctf_default_emoji_id))
-        .topic(creds_str) // Post guidelines for forum channel
+        .topic(forum_topic) // Post guidelines for forum channel
         // deny access to everyone
         .permissions([PermissionOverwrite {
             kind: PermissionOverwriteType::Role(everyone.id),
@@ -85,6 +100,7 @@ pub async fn competition(
         }])
         .execute(ctx, config().server.guild_id)
         .await?;
+    competition.channel_id = forum.id;
 
     // Add category and solved tags to forum channel
     let tags = vec![
@@ -107,13 +123,6 @@ pub async fn competition(
         .await?;
 
     // Create post with credentials
-    let credentials_embed = CreateEmbed::new()
-        .color(0xc22026)
-        .title(&format!("{name} credentials"))
-        .description(url)
-        .field("Username", username_esc, false)
-        .field("Password", password_esc, false);
-
     let mut creds_channel = forum
         .create_forum_post(
             ctx,
@@ -123,6 +132,7 @@ pub async fn competition(
             ),
         )
         .await?;
+    competition.creds_channel_id = creds_channel.id;
 
     // Pin credentials / general discussion post
     creds_channel
@@ -131,6 +141,8 @@ pub async fn competition(
 
     // Pin credentials message in creds channel
     if let Some(creds_message_id) = creds_channel.last_message_id {
+        competition.creds_message_id = creds_message_id;
+
         let creds_message = creds_channel.message(ctx, creds_message_id).await?;
         creds_message.pin(ctx).await?;
     }
@@ -181,15 +193,7 @@ pub async fn competition(
         .await?;
 
     let mut conn = ctx.data().conn().await;
-
-    let competition = Competition {
-        channel_id: forum.id,
-        name: name.clone(),
-        bingo: BingoSquare::Free.into(),
-        active: true,
-    };
     conn.create_competition(competition).await?;
-
     conn.commit().await?;
 
     ctx.say(format!("Created channel for **{name}**: {forum}"))
@@ -197,6 +201,216 @@ pub async fn competition(
 
     Ok(())
 }
+
+/// Edits credential details for the current ctf.
+#[poise::command(slash_command)]
+pub async fn edit(
+    ctx: CmdContext<'_>,
+    #[description = "Team username"] username: Option<String>,
+    #[description = "Team email"] email: Option<String>,
+    #[description = "Team password"] password: Option<String>,
+    #[description = "Team token or login URL"] token: Option<String>,
+) -> Result<(), Error> {
+    if !has_perms(&ctx).await {
+        return Err(anyhow::anyhow!(
+            "You do not have permissions to edit a competition."
+        ));
+    }
+
+    // Ensure command is being run within a competition channel, and the competition is not already archived.
+    let channel_id = get_competition_id_from_ctx(&ctx).await?;
+
+    let mut conn = ctx.data().conn().await;
+
+    let mut competition = conn.get_competition(channel_id).await?;
+
+    if let Some(value) = username {
+        competition.username = Some(value);
+    }
+    if let Some(value) = email {
+        competition.email = Some(value);
+    }
+    if let Some(value) = password {
+        competition.password = Some(value);
+    }
+    if let Some(value) = token {
+        competition.token = Some(value);
+    }
+
+    let forum_topic = render_forum_topic(&competition)?;
+    let credentials_embed = render_credentials_embed(&competition)?;
+
+    let mut forum = competition
+        .channel_id
+        .to_channel(ctx)
+        .await?
+        .guild()
+        .ok_or_else(|| anyhow::anyhow!("Competition is not a channel"))?;
+
+    let creds_channel = competition
+        .creds_channel_id
+        .to_channel(ctx)
+        .await?
+        .guild()
+        .ok_or_else(|| anyhow::anyhow!("Credentials post is not a guild channel"))?;
+
+    let mut creds_message = creds_channel
+        .message(ctx, competition.creds_message_id)
+        .await?;
+
+    forum
+        .edit(ctx, EditChannel::new().topic(forum_topic))
+        .await?;
+
+    creds_message
+        .edit(ctx, EditMessage::new().embed(credentials_embed))
+        .await?;
+
+    conn.update_competition(competition).await?;
+    conn.commit().await?;
+
+    ctx.say(format!("Updated competition info")).await?;
+
+    Ok(())
+}
+
+/// Archives the current competition channel.
+#[poise::command(slash_command)]
+pub async fn archive(ctx: CmdContext<'_>) -> Result<(), Error> {
+    // category where archived ctf channels are sent
+    let archived_category_id = config().server.archived_ctf_category_id;
+    let join_channel_id = config().server.ctf_join_channel;
+    let join_channel = join_channel_id.to_channel(ctx).await?;
+
+    if !has_perms(&ctx).await {
+        return Err(anyhow::anyhow!(
+            "You do not have permissions to archive a competition."
+        ));
+    }
+
+    // Ensure command is being run within a competition channel, and the competition is not already archived.
+    let competition = get_competition_from_ctx(&ctx).await?;
+
+    let mut channel = competition
+        .channel_id
+        .to_channel(ctx)
+        .await?
+        .guild()
+        .expect("You are not inside a competition channel.");
+
+    if channel
+        .parent_id
+        .is_some_and(|id| id == archived_category_id)
+    {
+        return Err(anyhow::anyhow!("This competition is already archived!"));
+    }
+
+    // Remove the channel from active CTFS
+    let mut conn = ctx.data().conn().await;
+    conn.remove_active_ctf(competition.channel_id).await?;
+    conn.commit().await?;
+
+    // Edit button to no longer provide access
+    let active = ctx.data().conn().await.get_active_ctfs().await?;
+    if let Some(join_message_id) = join_channel.guild().and_then(|guild| guild.last_message_id) {
+        let mut join_message = join_channel_id.message(ctx, join_message_id).await?;
+        let buttons: Vec<CreateButton> = active
+            .iter()
+            .filter(|ctf| ctf.channel_id != competition.channel_id)
+            .map(|ctf| {
+                CreateButton::new(ctf.channel_id.to_string())
+                    .label(format!("Play in {}", &ctf.name))
+            })
+            .collect();
+        join_message
+            .edit(
+                ctx,
+                EditMessage::new().components(if buttons.is_empty() {
+                    Vec::new()
+                } else {
+                    buttons
+                        .chunks(5)
+                        .map(|b| CreateActionRow::Buttons(b.to_vec()))
+                        .collect()
+                }),
+            )
+            .await?;
+    }
+
+    // Remove viewing restrictions
+    let roles = &ctx
+        .guild()
+        .ok_or(anyhow::anyhow!("Failed to get roles"))?
+        .roles
+        .clone();
+    let everyone = roles
+        .values()
+        .find(|role| role.name == "@everyone")
+        .ok_or(anyhow::anyhow!("\\@everyone role not found"))?;
+    channel
+        .delete_permission(ctx, PermissionOverwriteType::Role(everyone.id))
+        .await?;
+
+    // Move the channel to the archived category.
+    channel
+        .edit(ctx, EditChannel::new().category(archived_category_id))
+        .await?;
+
+    ctx.say(format!("Archived **{}**.", competition.name))
+        .await?;
+
+    Ok(())
+}
+
+fn backtick_string(value: &str) -> Result<String, Error> {
+    if value.contains("`") {
+        Err(anyhow::anyhow!("{value} cannot contain a backtick (`)"))
+    } else {
+        Ok(format!("`{value}`"))
+    }
+}
+
+/// Renders the description for forum (shows under some weird button about post guidelines)
+fn render_forum_topic(competition: &Competition) -> Result<String, Error> {
+    let mut out = format!("**{}**:\n{}\n", competition.name, competition.url);
+
+    for (field_name, value) in competition.login_fields() {
+        out.push_str(&format!(
+            "\n**{}**: {}",
+            field_name,
+            backtick_string(value)?
+        ));
+    }
+
+    Ok(out)
+}
+
+/// Renders the embed posted in the general discussion channel
+fn render_credentials_embed(competition: &Competition) -> Result<CreateEmbed, Error> {
+    let mut out = CreateEmbed::new()
+        .color(0xc22026)
+        .title(&format!("{} credentials", competition.name))
+        .description(competition.url.clone());
+
+    for (field_name, value) in competition.login_fields() {
+        out = out.field(field_name, backtick_string(value)?, false);
+    }
+
+    Ok(out)
+}
+
+// /// Creates a new ctf competition channel.
+// #[poise::command(slash_command)]
+// pub async fn competition(
+//     ctx: CmdContext<'_>,
+//     #[description = "Name of the ctf"] name: String,
+//     #[description = "Url of ctf website"] url: String,
+//     //#[description = "Description of the ctf"] description: Option<String>,
+//     #[description = "Team username"] username: String,
+//     #[description = "Team password"] password: String,
+// ) -> Result<(), Error> {
+
+// }
 
 pub async fn get_competition_id_from_ctx(ctx: &CmdContext<'_>) -> Result<ChannelId, Error> {
     let Some(thread_channel) = ctx.guild_channel().await else {

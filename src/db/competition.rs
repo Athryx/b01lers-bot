@@ -7,7 +7,7 @@ use image::{
     DynamicImage, ImageFormat, Rgba,
 };
 use imageproc::{drawing::draw_antialiased_line_segment_mut, pixelops::interpolate};
-use serenity::all::ChannelId;
+use serenity::all::{ChannelId, MessageId};
 
 macro_rules! make_bingo_variants {
     ($($bingo_name:ident: $bingo_description:expr,)*) => {
@@ -72,6 +72,14 @@ pub struct CompetitionRaw {
     pub name: String,
     pub bingo: i64,
     pub active: i64,
+    pub ai_allowed: i64,
+    pub url: String,
+    pub creds_channel_id: i64,
+    pub creds_message_id: i64,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub email: Option<String>,
+    pub token: Option<String>,
 }
 
 impl From<Competition> for CompetitionRaw {
@@ -81,6 +89,14 @@ impl From<Competition> for CompetitionRaw {
             name: value.name,
             bingo: value.bingo.bits().into(),
             active: value.active as i64,
+            ai_allowed: value.ai_allowed as i64,
+            url: value.url,
+            creds_channel_id: value.creds_channel_id.get() as i64,
+            creds_message_id: value.creds_message_id.get() as i64,
+            username: value.username,
+            password: value.password,
+            email: value.email,
+            token: value.token,
         }
     }
 }
@@ -91,15 +107,68 @@ pub struct Competition {
     pub name: String,
     pub bingo: BitFlags<BingoSquare>,
     pub active: bool,
+    pub ai_allowed: bool,
+    pub url: String,
+    pub creds_channel_id: ChannelId,
+    pub creds_message_id: MessageId,
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>,
+    pub token: Option<String>,
+}
+
+impl Competition {
+    /// Returns a list of login fields which have been set.
+    pub fn login_fields<'a>(&'a self) -> Vec<(&'static str, &'a str)> {
+        let mut out = Vec::new();
+
+        if let Some(value) = self.username.as_ref() {
+            out.push(("Username", value.as_str()));
+        }
+
+        if let Some(value) = self.email.as_ref() {
+            out.push(("Email", value.as_str()));
+        }
+
+        if let Some(value) = self.password.as_ref() {
+            out.push(("Password", value.as_str()));
+        }
+
+        if let Some(value) = self.token.as_ref() {
+            out.push(("Token", value.as_str()));
+        }
+
+        out
+    }
 }
 
 impl From<CompetitionRaw> for Competition {
     fn from(value: CompetitionRaw) -> Self {
+        let creds_channel_id = if value.creds_channel_id == -1 {
+            ChannelId::default()
+        } else {
+            ChannelId::new(value.creds_channel_id as u64)
+        };
+
+        let creds_message_id = if value.creds_message_id == -1 {
+            MessageId::default()
+        } else {
+            MessageId::new(value.creds_message_id as u64)
+        };
+
         Competition {
             channel_id: ChannelId::new(value.channel_id as u64),
             name: value.name,
             bingo: BitFlags::from_bits_truncate(value.bingo as u32),
             active: value.active != 0,
+            ai_allowed: value.ai_allowed != 0,
+            url: value.url,
+            creds_channel_id: creds_channel_id,
+            creds_message_id: creds_message_id,
+            username: value.username,
+            password: value.password,
+            email: value.email,
+            token: value.token,
         }
     }
 }

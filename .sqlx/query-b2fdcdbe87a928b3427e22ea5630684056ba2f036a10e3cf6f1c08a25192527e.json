@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO competition (channel_id, name, bingo, active, ai_allowed, url, creds_channel_id, creds_message_id, username, email, password, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 12
+    },
+    "nullable": []
+  },
+  "hash": "b2fdcdbe87a928b3427e22ea5630684056ba2f036a10e3cf6f1c08a25192527e"
+}
