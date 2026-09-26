@@ -10,14 +10,14 @@ use crate::points::{get_point_cutoffs, points_to_string};
 use super::{CmdContext, Error};
 use crate::db::User;
 
-#[poise::command(slash_command, subcommands("solves", "leaderboard", "rank"))]
+#[poise::command(slash_command, subcommands("user", "leaderboard", "rank"))]
 pub async fn stats(_ctx: CmdContext<'_>) -> Result<(), Error> {
     Ok(())
 }
 
 /// Gets statiscits about the challenges you have solved
 #[poise::command(slash_command)]
-pub async fn solves(
+pub async fn user(
     ctx: CmdContext<'_>,
     #[description = "User to list stats for (empty to list your own stats)"] user: Option<UserId>,
 ) -> Result<(), Error> {
@@ -26,20 +26,15 @@ pub async fn solves(
         None => ctx.author().id,
     };
 
-    let solves = ctx
-        .data()
-        .conn()
-        .await
-        .get_solved_challenges_for_user(user_id)
-        .await?;
+    let mut conn = ctx.data().conn().await;
 
-    let mut stats_embed = CreateEmbed::new()
-        .title("CTF Solve Stats")
-        .description(format!(
-            "Number of challenges {} has solved in each catagory",
-            user_id.mention()
-        ))
-        .color(0xc22026);
+    let user = conn.get_user_by_id(user_id).await?;
+    let solves = conn.get_solved_challenges_for_user(user_id).await?;
+    let solve_points = config().ranks.points_per_solve * solves.len() as i64;
+
+    // calculate per category solve table
+    let mut categories = String::new();
+    let mut solve_counts = String::new();
 
     for category in ChallengeType::iter() {
         let solve_count = solves
@@ -47,8 +42,30 @@ pub async fn solves(
             .filter(|solve| solve.category == category)
             .count();
 
-        stats_embed = stats_embed.field(category.to_string(), solve_count.to_string(), true);
+        // stats_embed = stats_embed.field(category.to_string(), solve_count.to_string(), true);
+        categories.push_str(&format!("{}\n", category.to_string()));
+        solve_counts.push_str(&format!("{solve_count}\n"));
     }
+
+    categories.push_str("**Total**");
+    solve_counts.push_str(&format!("**{}**", solves.len()));
+
+    let stats_embed = CreateEmbed::new()
+        .title("CTF Solve Stats")
+        .description(format!(
+            "Number of challenges {} has solved in each catagory",
+            user_id.mention()
+        ))
+        .color(0xc22026)
+        .field(
+            "Current Rank",
+            user.rank.rank_name().unwrap_or("unranked"),
+            true,
+        )
+        .field("Total Points", user.points.to_string(), true)
+        .field("Points from CTF Solves", solve_points.to_string(), true)
+        .field("Category", categories, true)
+        .field("Solves", solve_counts, true);
 
     let message = CreateReply::default().embed(stats_embed);
 
